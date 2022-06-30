@@ -1,27 +1,22 @@
 nextflow.enable.dsl = 2
-launchDir = "${launchDir}/${params.datain.replaceAll(".*/","")}"
-
 
 process GUPPY_BASECALL {
 	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
-	publishDir "${launchDir}/basecalled/", mode:'copy'
-	
-	input:
-	tuple val(name), path(f5)
-	
-	output:
-	path '*'
 
 	script:
 	"""
-	guppy_basecaller -i 
+	guppy_basecaller -i $params.data -s ${launchDir}/basecalled/ --flowcell FLO-FLG001 --kit SQK-LSK110 -x auto 
 	"""
 }
 
 
  
 workflow {
- rawfast5 = channel.fromPath("${params.data}/*.fast5", checkIfExists: true)
-	
-rawfast5.view()   
+println("${params.data}")
+rawfast5 = channel
+		.fromPath("${params.data}/*.fast5", checkIfExists: true)
+		.map({ file -> [file, file.getSimpleName() ]})
+		.view()
+
+GUPPY_BASECALL()
 }
