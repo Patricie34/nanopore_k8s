@@ -1,27 +1,17 @@
-FROM ubuntu:hirsute
+FROM ubuntu:18.04
 
-ENV INSTALL_DIR="/opt"
+ARG PACKAGE_VERSION=6.0.1
+ARG BUILD_PACKAGES="wget apt-transport-https"
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update; export DEBIAN_FRONTEND=noninteractive; apt-get -y --no-install-recommends install \
-   wget \
-   unzip \
-   build-essential \
-   gcc-multilib \
-   multiqc \
-   netcat-openbsd && \
-   export DEBIAN_FRONTEND=noninteractive; apt-get -y install openssh-client openssh-sftp-server openssh-server
-
-# Install miniconda
-ENV CONDA_DIR /opt/conda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-     /bin/bash ~/miniconda.sh -b -p /opt/conda
-
-# Put conda in path so we can use conda activate
-ENV PATH=$CONDA_DIR/bin:$PATH
-# Install the conda environment
-COPY environment.yml /
-RUN conda env create -f /environment.yml && conda clean --all -f -y
-
-# Add conda installation dir to PATH (instead of doing 'conda activate')
-ENV PATH /opt/conda/envs/mareckova_CXCR_k8s/bin:$PATH
+RUN apt update && \
+    apt install --yes $BUILD_PACKAGES && \
+    cd /tmp && \
+    wget -q https://mirror.oxfordnanoportal.com/software/analysis/ont_guppy_cpu_${PACKAGE_VERSION}-1~bionic_amd64.deb && \
+    apt install --yes /tmp/ont_guppy_cpu_${PACKAGE_VERSION}-1~bionic_amd64.deb && \
+    rm *.deb && \
+    apt-get autoremove --purge --yes && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+ENV PATH "/opt/ont/guppy/bin:$PATH"
 USER 1000
