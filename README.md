@@ -17,7 +17,7 @@ Computations are running from bioit proxy (use ssh to connect). Analysis is then
 2. Enter flowcell and kit info with path for fast5 files 
 Run the script as the example bellow (run.sh)
 ```
-nextflow kuberun xsvato01/nanopore_k8s/main.nf -r main -pod-image 'cerit.io/nextflow/nextflow:22.05.0' -resume -c local_nextflow.config -process.echo //
+nextflow kuberun xsvato01/nanopore_k8s/main.nf -r main -pod-image 'cerit.io/nextflow/nextflow:22.05.0' -c local_nextflow.config  //
         --flowcell FLO-FLG001 --kit SQK-LSK110 --data '/mnt/shared/MedGen/ONTdata/k8s_testing/20220614_1150_MN16014_ais387_bfa74e7a/fast5_pass'
 ```
 ## Using the GPU-accelerated container in other pipelines
@@ -28,8 +28,8 @@ To use the preinstalled Guppy-GPU container in eg. Nextflow pipelines, use the c
 In Nextflow, you can facilitate this container by specifying it in the .config file or the actual script:
 ```
 process XXX {
-      container = 'registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:latest'
-      containerOptions '--gpus all'
+     accelerator XY
+     container 'registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:latest'
 
     script:
       """
@@ -39,3 +39,4 @@ process XXX {
 }
 
 ```
+where XY denotes the number of GPUs to facilitate (maximum 2); local_nextlow.config is already pre-set to use gpu-accelerated basecalling for any process starting with name GUPPY_*

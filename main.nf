@@ -2,7 +2,6 @@ nextflow.enable.dsl = 2
 k8s.storageClaimName = 'pvc-janek-storage-elixir1-cerit-sc-cz'
 
 process GUPPY_BASECALL {
-	containerOptions '--gpus all'
 	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
 
 	script:
