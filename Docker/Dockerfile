@@ -1,5 +1,5 @@
 # Set the base image to Ubuntu 18.04 and NVIDIA GPU
-FROM genomicpariscentre/guppy-gpu
+FROM genomicpariscentre/guppy-gpu:latest
 ENV PATH "/opt/ont/guppy/bin:$PATH"
 
 # Install miniconda
