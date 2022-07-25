@@ -1,10 +1,6 @@
 
 run = "${params.data}".split("/")
-println(run)
 run = run[run.size()-2]
-println(run)
-
-
 launchDir = "${launchDir}/${run}"
 
 process GUPPY_BASECALL {
@@ -82,7 +78,8 @@ println("${params.data}")
 rawfastq	= GUPPY_BASECALL()
 mapped		= MAPPING(rawfastq.map({ file -> [run, file]}))
 mapped[0].view()
-		SNIFF(mapped[0],mapped[1])
+
+SNIFF(mapped[0],mapped[1])
 QUALIMAP(mapped[0])
 }
 
