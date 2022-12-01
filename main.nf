@@ -67,7 +67,7 @@ process QUALIMAP {
 
         script:
         """
-        qualimap bamqc -bam ${bams} -nw 5000 -nt 14 --java-mem-size=3G -c -outdir ./qualimap
+        qualimap bamqc -bam ${bams} -nw 5000 -nt 14 --java-mem-size=30G -c -outdir ./qualimap
 
         """
 }
