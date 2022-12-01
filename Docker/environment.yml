@@ -8,4 +8,5 @@ channels:
 dependencies:
   - minimap2
   - samtools
-  - sniffles
+  - svim
+  - pysam
