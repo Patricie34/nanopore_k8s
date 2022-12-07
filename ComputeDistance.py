@@ -4,7 +4,8 @@ from pysam import VariantFile
 # VCFFile = "./SVIM_workdir/variants.vcf"
 
 def read_variants(file_path: str) -> list:
-  vcf = VariantFile(file_path)
+  print(file_path)
+  vcf = VariantFile(file_path[0])
   vars = []
   id = 0
 
@@ -28,15 +29,22 @@ def read_variants(file_path: str) -> list:
   return(vars)
 
 
-# with open('./SVIM_workdir/Variants_distances.tsv','w') as f:
-#   f.write("id\tdistance\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n")
-#   for v in vars:
-#     f.write(f"{v['id']}\t{v['dist']}\t{v['line']}\n")
+def filter_duplicated(DupList):
+  for i in range(len(DupList)-1):
+    for j in range(i+1,len(DupList)-1):
+      for read in DupList[i]["reads"]:
+        if read in DupList[j]["reads"] and DupList[i]["from_pos"] == DupList[j]["to_pos"] and DupList[i]["from_chr"] == DupList[j]["to_chr"]:
+          DupList[j]["reads"].remove(read)
+          #if not len(DupList[j]["reads"]):
+           # DedupList.pop(j)
+  DedupList =  [rec for rec in DupList if len(rec["reads"])]
+  return(DedupList)
 
 
 if __name__ == "__main__":
    vars = read_variants(file_path = sys.argv[1:])
+   filtered = filter_duplicated(vars)
 
    print("id\tdistance\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n")
-   for v in vars:
+   for v in filtered:
     print(f"{v['id']}\t{v['dist']}\t{v['line']}\n")
