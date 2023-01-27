@@ -1,53 +1,26 @@
-// run = "${params.data}".split("/")
-// run = run[run.size()-1]
-// resultsDir = "${params.outDir}/${run}/nano"
+run = "${params.data}".split("/")
+run = run[run.size()-1]
+resultsDir = "${params.outDir}/${run}/nano"
 
 
 
 process GUPPY_BASECALL {
 	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
-	//accelerator 1, type: 'nvidia.com/mig-1g.10gb'
-
-	input:
-	tuple val(name), val(path), val(type)
+	publishDir  "${resultsDir}/", mode:'copy'
+	accelerator 1, type: 'nvidia.com/mig-1g.10gb'
 
 	output:
-	tuple val(name), path("basecalled/pass/*.gz")
-
-	when:
-		type == 'fast5'
+	path "basecalled/pass/*.fastq"
 
 	script:
 	"""
-	guppy_basecaller -i ${path}/ -s ./basecalled --flowcell ${params.flowcell} --kit ${params.kit} --compress_fastq --recursive --num_callers ${task.cpus} # -x auto
-	"""
-} 
-
-
-process COLLECT_BASECALLED {
-	tag "Collecting FastQ on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
-
-	input:
-	tuple val(name), val(path), val(type)
-
-	output:
-	tuple val(name), path("basecalled/pass/*.fastq.gz")
-
-	when:
-		type == 'fastq'
-
-	script:
-	"""
-	mkdir -p basecalled/pass/
-	find ${path} -type f -name '*.fastq.gz' | xargs -I % cp % ./basecalled/pass/
+	guppy_basecaller -i ${params.data}/ -s ./basecalled --flowcell ${params.flowcell} --kit ${params.kit} --recursive --num_callers ${task.cpus} -x auto
 	"""
 } 
 
 process MAPPING {
 	tag "Mapping on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/mapped/", mode:'copy'
+	publishDir  "${resultsDir}/mapped/", mode:'copy'
 
 	input:
 	tuple val(name), path(reads)
@@ -67,7 +40,7 @@ process MAPPING {
 
 process SVIM{
 	tag "Variant calling on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	publishDir  "${resultsDir}/VarCal/", mode:'copy'
 
 	input:
 	tuple val(name), path(mapped)
@@ -86,7 +59,7 @@ process SVIM{
 
 process EDITVCF {
 	tag "Post process VCF on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	publishDir  "${resultsDir}/VarCal/", mode:'copy'
 
 	input:
 	tuple val(name), path(mapped)
@@ -106,7 +79,7 @@ process EDITVCF {
 
 process QUALIMAP {
 	container 'pegi3s/qualimap'
-	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
+	publishDir  "${resultsDir}/", mode:'copy'
 		label "big_mem"
 
 	
@@ -124,7 +97,7 @@ process QUALIMAP {
 
 process FLYE {
 	container 'staphb/flye'
-	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
+	publishDir  "${resultsDir}/", mode:'copy'
 	label "big_mem"
 
 
@@ -141,26 +114,25 @@ process FLYE {
 }
 
 process SHASTA {
-	publishDir  "${params.outDir}/${name}/nano/SHASTA", mode:'copy'
+	publishDir  "${resultsDir}/SHASTA", mode:'copy'
 	memory '300 GB'
 	label "biggest_mem"
 	//label "big_cpus"
 	tag "Shasta on $name using $task.cpus CPUs $task.memory"
 
 	input:
-	tuple val(name), path(fastq)
-	//tuple val(name), path(bam)
+	path(fastq)
+	tuple val(name), path(reads)
 
 
 	output:
 	path "ShastaRun/*"
-	tuple val(name), path("ShastaRun/Assembly.fasta")
+	path "ShastaRun/Assembly.fasta"
  
 	script:
 	"""
 	#shasta --help
-	gunzip -d --force *.fastq.gz
-	cat *.fastq* | sed -n '1~4s/^@/>/p;2~4p' > all.fasta
+	cat *.fastq | sed -n '1~4s/^@/>/p;2~4p' > all.fasta
 	#cat all.fasta | wc
 #--memoryMode filesystem --memoryBacking disk
 	echo Running_Shasta
@@ -170,7 +142,7 @@ process SHASTA {
 
 process CNVKIT {
  container 'etal/cnvkit'
-	publishDir  "${params.outDir}/${name}/nano/CNVkit", mode:'copy'
+	publishDir  "${resultsDir}/CNVkit", mode:'copy'
 
 	input:
 	tuple val(name), path(mapped)
@@ -192,12 +164,12 @@ process CNVKIT {
 
 process MUMMER {
  container 'staphb/mummer'
-	publishDir  "${params.outDir}/${name}/nano/Dnadiff", mode:'copy'
+	publishDir  "${resultsDir}/Dnadiff", mode:'copy'
 	label "biggest_mem"
 	tag "Mummer on $name using $task.cpus CPUs $task.memory"
 
 	input:
-	tuple val(name), path(assembly)
+	path(assembly)
 
 	output:
 	path "*"
@@ -211,34 +183,21 @@ process MUMMER {
 }
 
 workflow {
-//println("${params.data}")
-//println("Run name: ${run}")
+println("${params.data}")
+println("Run name: ${run}")
 
 
-runlist = channel.fromList(params.runs)
-
-FQcalled = GUPPY_BASECALL(runlist)
-FQcollected = COLLECT_BASECALLED(runlist)
-
- FQfiles = FQcalled.mix(FQcollected).view()
-
-mapped		= MAPPING(FQfiles)
-
- //spolecne(FQfiles)
-
-
-//rawfastq	= GUPPY_BASECALL()
+rawfastq	= GUPPY_BASECALL()
 //FLYE(rawfastq.map(rawfastq)
-//mapped		= MAPPING(rawfastq.map({ file -> [run, file]}))
+mapped		= MAPPING(rawfastq.map({ file -> [run, file]}))
+mapped[0].view()
 
 vcfs = SVIM(mapped[0],mapped[1])
 EDITVCF(mapped[0],mapped[1],vcfs[1])
 CNVKIT(mapped[0],mapped[1])
 QUALIMAP(mapped[0])
-// rawfastq.collect().view()
-// assembly = SHASTA(rawfastq.collect(),mapped[0])
-assembly = SHASTA(FQfiles)
-
+rawfastq.collect().view()
+assembly = SHASTA(rawfastq.collect(),mapped[0])
 MUMMER(assembly[1])
 }
 

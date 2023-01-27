@@ -1,11 +1,14 @@
 import sys
-from pysam import VariantFile
+import pysam
 
-# VCFFile = "./SVIM_workdir/variants.vcf"
+#file_path = "/Volumes/share/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO2013/nano/VarCal/variants.vcf"
+#bam_path = "/Volumes/share/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO2013/nano/mapped/BRNO2013.sorted.bam"
 
-def read_variants(file_path: str) -> list:
+def read_variants(file_path: str, bam_path: str) -> list:
   print(file_path)
-  vcf = VariantFile(file_path)
+  vcf = pysam.VariantFile(file_path)
+  bam = pysam.AlignmentFile(bam_path, mode = 'rb')  # 'rb' ~ read bam
+
   vars = []
   id = 0
 
@@ -15,6 +18,15 @@ def read_variants(file_path: str) -> list:
       from_chr = rec.chrom
       from_pos = rec.pos
       id += 1
+      try:
+        coverage = bam.count_coverage(
+                    contig = from_chr,     # Chromosome ID; also might be "chr1" or similar 
+                    start = from_pos-1,
+                    stop = from_pos,
+                    )
+      except ValueError:
+        print(f'Something went wrong at {rec}, from chr: {from_chr} from pos: {from_pos}.')
+      
       vars.append({ "id": id,
                     "from_chr": from_chr,
                      "from_pos": int(from_pos),
@@ -22,8 +34,9 @@ def read_variants(file_path: str) -> list:
                      "to_pos": int(to_pos),
                      "dist": "-" if (from_chr != to_chr) else str(abs(int(from_pos)-int(to_pos))),
                      "reads": f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(","),
-                     "coverage" : len(f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(",")),
-                     "line": f"{rec}".strip()})
+                     "support" : len(f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(",")),
+                     "coverage" : sum([x[0] for x in coverage]),
+                     "line": '\t'.join(f"{rec}".split('\t')[2:])})
 
   return(vars)
 
@@ -42,7 +55,9 @@ def filter_duplicated(DupList):
 
 if __name__ == "__main__":
    print("Parsing vcf")
-   vars = read_variants(file_path = sys.argv[1])
+   vars = read_variants(file_path = sys.argv[1], bam_path = sys.argv[2] )
+   #vars = read_variants(file_path, bam_path )
+
    print("Filtering vcf")
    filtered = filter_duplicated(vars)
 
@@ -50,13 +65,13 @@ if __name__ == "__main__":
    #for v in filtered:
     #print(f"{v['id']}\t{v['dist']}\t{v['line']}")
    print("Saving vcf")
-   with open(f"Dedup_{sys.argv[2]}.tsv",'w') as f:
-    f.write("id\tdistance\tChrFrom\tPosFrom\tChrTo\tPosTo\tCoverage\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n")
+   with open(f"Dedup_{sys.argv[3]}.tsv",'w') as f:
+    f.write("id\tdistance\tChrFrom\tPosFrom\tChrTo\tPosTo\tSupport_nonUnique\tCoverage\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
     for v in filtered:
-     f.write(f"{v['id']}\t{v['dist']}\t{v['from_chr']}\t{v['from_pos']}\t{v['to_chr']}\t{v['to_pos']}\t{v['coverage']}\t{v['line']}\n")
+     f.write(f"{v['id']}\t{v['dist']}\t{v['from_chr']}\t{v['from_pos']}\t{v['to_chr']}\t{v['to_pos']}\t{v['support']}\t{v['coverage']}\t{v['line']}")
 
-   with open(f"Dedup_1000dist{sys.argv[2]}.tsv",'w') as f:
-    f.write("id\tdistance\tChrFrom\tPosFrom\tChrTo\tPosTo\tCoverage\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n")
+   with open(f"Dedup_1000dist{sys.argv[3]}.tsv",'w') as f:
+    f.write("id\tdistance\tChrFrom\tPosFrom\tChrTo\tPosTo\tSupport_nonUnique\tCoverage\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
     for v in filtered:
      if not v['dist'].isnumeric() or int(v['dist']) > 1000:
-        f.write(f"{v['id']}\t{v['dist']}\t{v['from_chr']}\t{v['from_pos']}\t{v['to_chr']}\t{v['to_pos']}\t{v['coverage']}\t{v['line']}\n")
+        f.write(f"{v['id']}\t{v['dist']}\t{v['from_chr']}\t{v['from_pos']}\t{v['to_chr']}\t{v['to_pos']}\t{v['support']}\t{v['coverage']}\t{v['line']}")
