@@ -42,8 +42,9 @@ def read_variants(file_path: str, bam_path: str) -> list:
 
 
 def filter_duplicated(DupList):
-  for i in range(len(DupList)-1):
-    for j in range(i+1,len(DupList)-1):
+  listlen = len(DupList)-1
+  for i in range(listlen):
+    for j in range(i+1,listlen):
       for read in DupList[i]["reads"]:
         if read in DupList[j]["reads"] and DupList[i]["from_pos"] == DupList[j]["to_pos"] and DupList[i]["from_chr"] == DupList[j]["to_chr"]:
           DupList[j]["reads"].remove(read)
