@@ -13,3 +13,4 @@ dependencies:
   - shasta
   - bedtools
   - pandas
+  - cyvcf2
