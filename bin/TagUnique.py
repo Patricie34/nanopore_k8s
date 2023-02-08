@@ -6,7 +6,7 @@ from cyvcf2 import VCF, Writer
 def tag_variants(file_path: str, uniques: str, name: str) -> list:
   print(file_path)
   ids = list(pandas.read_csv(uniques, header = None)[0])
-  vcf = VCF(vars)
+  vcf = VCF(file_path)
   vcf.add_info_to_header({
     'ID': 'UNIQUE',
     'Description': 'Numeric code for filtering reason',

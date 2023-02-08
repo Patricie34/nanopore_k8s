@@ -96,13 +96,12 @@ process TAG_UNIQUE_VARS{
  tuple val(name), path(vcf), path(vcf_filter_with)
 
 	output:
-	path "*UniqueTag.vcf"
+	tuple val(name), path("*UniqueTag.vcf")
 
 	
 	script:
 	"""
 	bedtools intersect -a ${vcf} -b ${vcf_filter_with} -v | awk '{print \$3}' > uniqueIDs.txt
-	head -n 20 uniqueIDs.txt
  python ${params.TagUniqes} ${vcf} uniqueIDs.txt ${name}
 	"""
 } 

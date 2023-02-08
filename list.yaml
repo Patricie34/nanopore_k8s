@@ -16,4 +16,4 @@ runs:
     type: fast5
   - name: BRNO2641
     path: /mnt/shared/MedGen/ONTdata/Sabina_HMW/BRNO2641
-    type: fast5
+    type: fastq
