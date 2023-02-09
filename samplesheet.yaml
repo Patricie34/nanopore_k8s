@@ -1,0 +1,19 @@
+runs:
+  - name: BRNO0627
+    path: /storage/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO0627/nano/mapped
+    type: bam
+  - name: BRNO1727
+    path: /storage/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO1727/nano/mapped
+    type: bam
+  - name: BRNO1837
+    path: /storage/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO1837/nano/mapped
+    type: bam
+  - name: BRNO2013
+    path: /storage/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO2013/nano/mapped
+    type: bam
+  - name: BRNO2170
+    path: /storage/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO2170/nano/mapped
+    type: bam
+  - name: BRNO2641
+    path: /storage/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO2641/nano/mapped
+    type: bam

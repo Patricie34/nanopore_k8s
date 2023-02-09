@@ -27,7 +27,7 @@ process GUPPY_BASECALL {
 
 process COLLECT_BASECALLED {
 	tag "Collecting Fastq on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
+	//publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
 
 	input:
 	tuple val(name), val(path), val(type)
@@ -42,6 +42,26 @@ process COLLECT_BASECALLED {
 	"""
 	mkdir -p basecalled/pass/
 	find ${path} -type f -name '*.fastq.gz' | xargs -I % cp % ./basecalled/pass/
+	"""
+} 
+
+process COLLECT_MAPPED {
+	tag "Collecting bam on $name using $task.cpus CPUs $task.memory"
+	//publishDir  "${params.outDir}/${name}/mapped/", mode:'copy'
+
+	input:
+	tuple val(name), val(path), val(type)
+
+	output:
+	tuple val(name), path("${name}.sorted.bam")
+	tuple val(name), path("${name}.sorted.bam.bai")
+
+	when:
+		type == 'bam'
+
+	script:
+	"""
+	find ${path} -type f -name '*.ba*' | xargs -I % cp % .
 	"""
 } 
 
@@ -106,22 +126,45 @@ process TAG_UNIQUE_VARS{
 	"""
 } 
 
+
+process ANNOTATE{
+	tag "Annotating vcf vars on $name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	label "small_process"
+
+
+	input:
+ tuple val(name), path(vcf)
+
+	output:
+	tuple val(name), path("${name}.UniqueTag.Annotated.vcf")
+
+	
+	script:
+	"""
+	vep -i ${vcf} --cache --cache_version 95 --dir_cache ${params.vep} 	--fasta ${params.ref} --merged --offline --format vcf --vcf --everything --canonical --force_overwrite -o ${name}.UniqueTag.Annotated.vcf
+	"""
+} 
+
+
 process EDITVCF {
 	tag "Post process VCF on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 	label "small_process"
 
 	input:
-	tuple val(name), path(mapped)
+	tuple val(name), path(bam)
 	tuple val(name), path(bai)
-	path(inputvcf)
+	tuple val(name), path(inputvcf)
 
 	output:
-	path '*'
+	tuple val(name), path("*.tsv")
 	
 	script:
 	"""
-	python ${params.ComputeDistance} ${inputvcf} ${mapped} Distanced_${name}
+ cat ${inputvcf} | grep BND | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' > BNDlocs.bed
+	bedtools coverage -abam BNDlocs.bed -b ${bam} -d > Coverage.txt
+	python ${params.ComputeDistance} ${inputvcf} Coverage.txt Distanced_${name}
 	"""
 } 
 
@@ -259,13 +302,18 @@ workflow {
 //println("${params.data}")
 //println("Run name: ${run}")
 runlist = channel.fromList(params.runs)
-
 FQcalled = GUPPY_BASECALL(runlist)
 FQcollected = COLLECT_BASECALLED(runlist)
 FQfiles = FQcalled.mix(FQcollected)
+Bamcollected = COLLECT_MAPPED(runlist)
+Bamcollected[0].view()
 
-mapped	= MAPPING(FQfiles)
- Vcfs = SVIM(mapped[0],mapped[1])
+Bams	= MAPPING(FQfiles)
+Bams[0].view()
+mapped_bams = Bamcollected[0].mix(Bams[0])
+mapped_bais = Bamcollected[1].mix(Bams[1])
+
+ Vcfs = SVIM(mapped_bams,mapped_bais)
 
  Vcf_paths = Vcfs[1].map({it -> [it[1]]})
 
@@ -293,12 +341,12 @@ Combined_filtered = Combined_collected_vcf.map({
 
 Combined_filtered.view()
 
- TAG_UNIQUE_VARS(Combined_filtered)
+Tagged = TAG_UNIQUE_VARS(Combined_filtered)
+
+Annotated = ANNOTATE(Tagged)
 
 
-
-
-//editedvcfs = EDITVCF(mapped[0],mapped[1],vcfs[1])
+editedvcfs = EDITVCF(mapped_bams,mapped_bais,Annotated)
 //CNVKIT(mapped[0],mapped[1])
 //QUALIMAP(mapped[0])
 
