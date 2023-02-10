@@ -1,14 +1,24 @@
 # Set the base image to Ubuntu 18.04 and NVIDIA GPU
-# FROM genomicpariscentre/guppy-gpu:latest
-# ENV PATH "/opt/ont/guppy/bin:$PATH"
+FROM genomicpariscentre/guppy-gpu:latest
+ENV PATH "/opt/ont/guppy/bin:$PATH"
 
 
-FROM mambaorg/micromamba
-COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/env.yaml
-#overcome "  Command 'ps' required by nextflow to collect task metrics cannot be found"
-#RUN apt-get update && apt-get install -y procps
-RUN micromamba install -y -n base -f /tmp/env.yaml && \
+RUN wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+./bin/micromamba shell init -s bash -p ~/micromamba
+source ~/.bashrc
+
+COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /
+RUN micromamba install -y -n base -f /environment.yml && \
     micromamba clean --all --yes
+
+
+
+# FROM mambaorg/micromamba
+# COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/env.yaml
+# #overcome "  Command 'ps' required by nextflow to collect task metrics cannot be found"
+# #RUN apt-get update && apt-get install -y procps
+# RUN micromamba install -y -n base -f /tmp/env.yaml && \
+#     micromamba clean --all --yes
 
 # # Install miniconda
 # ENV CONDA_DIR /opt/conda
