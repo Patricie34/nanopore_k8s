@@ -4,8 +4,8 @@ ENV PATH "/opt/ont/guppy/bin:$PATH"
 
 
 RUN wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-./bin/micromamba shell init -s bash -p ~/micromamba
-source ~/.bashrc
+RUN ./bin/micromamba shell init -s bash -p ~/micromamba
+RUN source ~/.bashrc
 
 COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /
 RUN micromamba install -y -n base -f /environment.yml && \
