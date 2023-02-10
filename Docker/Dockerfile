@@ -1,9 +1,9 @@
 # Set the base image to Ubuntu 18.04 and NVIDIA GPU
-FROM genomicpariscentre/guppy-gpu:latest
-ENV PATH "/opt/ont/guppy/bin:$PATH"
+# FROM genomicpariscentre/guppy-gpu:latest
+# ENV PATH "/opt/ont/guppy/bin:$PATH"
+FROM mambaorg/micromamba:jammy
 
-
-RUN wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+#RUN wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
 
 #ENV PATH=bin/micromamba/bin:$PATH
 
