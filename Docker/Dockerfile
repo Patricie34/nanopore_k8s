@@ -3,7 +3,7 @@
 # ENV PATH "/opt/ont/guppy/bin:$PATH"
 
 
-FROM mambaorg/micromamba:1.3.0
+FROM mambaorg/micromamba
 COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/env.yaml
 #overcome "  Command 'ps' required by nextflow to collect task metrics cannot be found"
 #RUN apt-get update && apt-get install -y procps
