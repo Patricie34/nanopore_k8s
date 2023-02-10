@@ -5,7 +5,7 @@ ENV PATH "/opt/ont/guppy/bin:$PATH"
 FROM mambaorg/micromamba:1.3.0
 COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/env.yaml
 #overcome "  Command 'ps' required by nextflow to collect task metrics cannot be found"
-RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/* 
+RUN apt-get update && apt-get install -y procps
 RUN micromamba install -y -n base -f /tmp/env.yaml && \
     micromamba clean --all --yes
 # # Install miniconda
