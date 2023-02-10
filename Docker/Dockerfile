@@ -5,7 +5,7 @@ ENV PATH "/opt/ont/guppy/bin:$PATH"
 
 RUN wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
 
-ENV PATH=bin/micromamba/bin:$PATH
+#ENV PATH=bin/micromamba/bin:$PATH
 
 #RUN ./bin/micromamba shell init -s bash -p ~/micromamba
 #RUN source ~/.bashrc
