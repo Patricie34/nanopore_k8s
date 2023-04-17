@@ -7,6 +7,7 @@
 process GUPPY_BASECALL {
 	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
+	container "genomicpariscentre/guppy-gpu:latest"
 	accelerator 1, type: 'nvidia.com/mig-1g.10gb'
 
 	input:
@@ -20,7 +21,7 @@ process GUPPY_BASECALL {
 
 	script:
 	"""
-	guppy_basecaller -i ${path}/ -s ./basecalled --flowcell ${params.flowcell} --kit ${params.kit} --compress_fastq --recursive --num_callers ${task.cpus} -x auto
+	/opt/ont/guppy/bin/guppy_basecaller -i ${path}/ -s ./basecalled --flowcell ${params.flowcell} --kit ${params.kit} --compress_fastq --recursive --num_callers ${task.cpus} -x auto
 	"""
 } 
 
@@ -90,8 +91,7 @@ process SVIM{
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 
 	input:
-	tuple val(name), path(mapped)
-	tuple val(name), path(bai)
+	tuple val(name), path(mapped), path(bai)
 
 	output:
 	path '*'
@@ -130,7 +130,7 @@ process TAG_UNIQUE_VARS{
 process ANNOTATE{
 	tag "Annotating vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
-	label "small_process"
+	label "big_mem"
 
 
 	input:
@@ -142,7 +142,7 @@ process ANNOTATE{
 	
 	script:
 	"""
-	vep -i ${vcf} --cache --cache_version 95 --dir_cache ${params.vep} 	--fasta ${params.ref} --merged --offline --format vcf --vcf --everything --canonical --force_overwrite -o ${name}.UniqueTag.Annotated.vcf
+	vep -i ${vcf} --cache --cache_version 90 --dir_cache ${params.vep} --fasta ${params.ref} --merged --offline --format vcf --vcf --everything --canonical --force_overwrite -o ${name}.UniqueTag.Annotated.vcf
 	"""
 } 
 
@@ -150,33 +150,46 @@ process ANNOTATE{
 process EDITVCF {
 	tag "Post process VCF on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
-	label "small_process"
 
 	input:
-	tuple val(name), path(bam)
-	tuple val(name), path(bai)
-	tuple val(name), path(inputvcf)
+	tuple val(name), path(inputvcf), path(bam) ,path(bai)
 
 	output:
 	tuple val(name), path("*.tsv")
-	
+	path('*')
+		
 	script:
 	"""
- cat ${inputvcf} | grep BND | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' > BNDlocs.bed
-	bedtools coverage -abam BNDlocs.bed -b ${bam} -d > Coverage.txt
+#	cat ${inputvcf} | grep BND | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' > BNDlocs.bed
+#	bedtools coverage -abam BNDlocs.bed -b ${bam} -d > Coverage.txt
+#	python ${params.ComputeDistance} ${inputvcf} Coverage.txt Distanced_${name}
+
+	cat ${inputvcf} | grep BND | grep -vE 'GL000|MT|K' | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' | sort -k1,1 -k2,2V > BNDlocs.bed
+# sort -k1,3V pro grch37
+	samtools view -H $bam | grep @SQ | sed 's/@SQ\tSN:\\|LN://g' > genome.txt 
+	samtools view -H $bam
+	head -n 20 BNDlocs.bed
+	head -n 20 genome.txt
+	bedtools coverage -sorted -abam BNDlocs.bed -b ${bam} -d -g genome.txt > Coverage.txt
 	python ${params.ComputeDistance} ${inputvcf} Coverage.txt Distanced_${name}
+
+	#sort -k1,3V BNDlocs.bed > BNDsorted.bed
+	#tail -n 30 BNDlocs.bed
+	#samtools view -H ${bam}
 	"""
 } 
 
 
 
 process QUALIMAP {
+		tag "Qualimap $name using $task.cpus CPUs $task.memory"
+
 	container 'pegi3s/qualimap'
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
 	label "big_mem"
 	
 	input:
-	tuple val(name), path (bams)
+	tuple val(name), path(bams), path(bais)
 
 	output:
 	path "qualimap/*"
@@ -207,29 +220,31 @@ process FLYE {
 
 
 process ASSEMBLY_PREFILTER {
-	publishDir  "${params.outDir}/${name}/SHASTA/", mode:'copy'
+		tag "Prefiltering BNDs on $name using $task.cpus CPUs $task.memory"
+
+	publishDir  "${params.outDir}/${name}/nano/SHASTA/", mode:'copy'
 
 	input:
-	tuple val(name), path (fastq)
-	tuple val(name), path (bam)
-
+	tuple val(name), path(bam), path(bai), path(vars)
 
 	output:
-	path "*.txt"
-	path "${name}.BND.fasta"
+	tuple val(name), path("${name}.BND.fasta")
+	path 'readnames.txt'
+	path 'filtered.bam'
+
 
 	script:
 	"""
- 
-	samtools view ${bam} -b -N ${name}.BNDreadnames.txt | samtools fasta - > ${name}.BND.fasta
+ cat ${vars} | grep -oP '(?<=READS\\=)([\\w\\-]*,)*[\\w\\-]*' | awk  -v FS="," -v OFS="\n" '{\$1=\$1;print}' > readnames.txt
+	samtools view ${bam} -b -N readnames.txt > filtered.bam
+	samtools fasta filtered.bam > ${name}.BND.fasta
 	"""
 }
 
 
 process SHASTA {
 	publishDir  "${params.outDir}/${name}/nano/SHASTA/", mode:'copy'
-	memory '300 GB'
-	label "biggest_mem"
+	// label "biggest_mem"
 	//label "big_cpus"
 	tag "Shasta on $name using $task.cpus CPUs $task.memory"
 
@@ -251,17 +266,18 @@ process SHASTA {
 	#cat all.fasta | wc
 #--memoryMode filesystem --memoryBacking disk
 	echo Running_Shasta
+	cat $fasta | wc -l
 	shasta --input $fasta --config Nanopore-May2022 --threads ${task.cpus} --Reads.minReadLength 5000
 	"""
 }
 
 process CNVKIT {
+	tag "CNVkit $name using $task.cpus CPUs $task.memory"
  container 'etal/cnvkit'
 	publishDir  "${params.outDir}/${name}/nano/CNVkit", mode:'copy'
 
 	input:
-	tuple val(name), path(mapped)
-	tuple val(name), path(bai)
+	tuple val(name), path(mapped), path(bai)
 
 	output:
 	path "*"
@@ -279,6 +295,7 @@ process CNVKIT {
 
 process MUMMER {
  container 'staphb/mummer'
+	//container 'quay.io/biocontainers/mummer'
 	publishDir  "${params.outDir}/${name}/nano/Dnadiff", mode:'copy'
 	label "biggest_mem"
 	tag "Mummer on $name using $task.cpus CPUs $task.memory"
@@ -292,9 +309,11 @@ process MUMMER {
 	script:
 	"""
 	#dnadiff -p dnadiff -t $task.cpus ${params.ref} ${assembly}
+	#	sleep infinity
+
 	nucmer -t $task.cpus ${params.ref} ${assembly}
-	run-mummer3 -t $task.cpus ${params.ref} ${assembly}
-	mummerplot out.delta
+#run-mummer3 -t $task.cpus ${params.ref} ${assembly}
+#mummerplot out.delta
 	"""
 }
 
@@ -305,57 +324,40 @@ runlist = channel.fromList(params.runs)
 FQcalled = GUPPY_BASECALL(runlist)
 FQcollected = COLLECT_BASECALLED(runlist)
 FQfiles = FQcalled.mix(FQcollected)
+
 Bamcollected = COLLECT_MAPPED(runlist)
-Bamcollected[0].view()
-
 Bams	= MAPPING(FQfiles)
-Bams[0].view()
-mapped_bams = Bamcollected[0].mix(Bams[0])
+mapped_bams = Bamcollected[0].mix(Bams[0]) // combine all bams from differents sources
 mapped_bais = Bamcollected[1].mix(Bams[1])
+mapped = mapped_bams.join(mapped_bais).view()
 
- Vcfs = SVIM(mapped_bams,mapped_bais)
-
- Vcf_paths = Vcfs[1].map({it -> [it[1]]})
-
-
-
-// vcf_paths =  Vcfs[1].collect()
-// 													.map({
-//   															it -> [it[0]]
-// 																	}).view()
-
- Combined_collected_vcf = Vcfs[1].combine(
-																																													Vcf_paths.collect().map({it -> [it]})
-																																													)
-
+Vcfs = SVIM(mapped)
+Vcf_paths = Vcfs[1].map({it -> [it[1]]})
+Vcf_paths.view()
+Combined_collected_vcf = Vcfs[1].combine(Vcf_paths.collect().map({it -> [it]}))
 Combined_filtered = Combined_collected_vcf.map({
 	 row ->
             def name      = row[0]
 												def vcf       = row[1]
-												// println(name)
             def filtered    = removeSame(vcf, row[2])
             [name,vcf, filtered]	
-												// [name]
 	})
 
+ Tagged = TAG_UNIQUE_VARS(Combined_filtered)
+ Annotated = ANNOTATE(Tagged)
+ Mapped_annot = Annotated.join(mapped).view() // join mapped with annotated, vcf fits bam for given sample
+ Mapped_vcfs = mapped.join(Vcfs[1]).view() // join mapped with variants, vcf fits bam for given sample
+ Editedvcfs = EDITVCF(Mapped_annot)
+ CNVKIT(mapped)
+ QUALIMAP(mapped)
 
-Combined_filtered.view()
+Prefiltered = ASSEMBLY_PREFILTER(Mapped_vcfs)
 
-Tagged = TAG_UNIQUE_VARS(Combined_filtered)
-
-Annotated = ANNOTATE(Tagged)
-
-
-editedvcfs = EDITVCF(mapped_bams,mapped_bais,Annotated)
-//CNVKIT(mapped[0],mapped[1])
-//QUALIMAP(mapped[0])
-
-//prefiltered = ASSEMBLY_PREFILTER(editedvcfs, mapped[0])
-
-//assembly = SHASTA(prefiltered[1])
+//Prefiltered = ASSEMBLY_PREFILTER(mapped_bams,mapped_bais,Vcfs[1])
+//Assembly = SHASTA(Prefiltered[0])
 
 //assembly = SHASTA(FQfiles)
-//MUMMER(assembly[1])
+//MUMMER(Assembly[1])
 
 /////////////////////////////////
  //spolecne(FQfiles)
