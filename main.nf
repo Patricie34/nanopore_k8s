@@ -95,7 +95,7 @@ process SVIM{
 
 	output:
 	path '*'
-		tuple val(name), path("${name}.variants.vcf")
+	tuple val(name), path("${name}.variants.vcf")
 
 	
 	script:
@@ -155,7 +155,7 @@ process EDITVCF {
 	tuple val(name), path(inputvcf), path(bam) ,path(bai)
 
 	output:
-	tuple val(name), path("*.tsv")
+	tuple val(name), path("Dedup_1000distDistanced_${name}.tsv")
 	path('*')
 		
 	script:
@@ -179,6 +179,27 @@ process EDITVCF {
 	"""
 } 
 
+
+process CIRCOS{
+	tag "Creating circos on $name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${name}/nano/Circos/", mode:'copy'
+
+	input:
+	path(vcfs)
+ tuple val(name), path(cnv_sorted)
+	tuple val(name), path(vars_edited)
+
+
+	output:
+	path("*.html")
+	
+	script:
+	"""
+	cat $vars_edited | awk -v FS="\t" '{print \$2,\$3,\$4,\$9,\$10,\$15}' > vars_slimmed.tsv
+	head -n 20 vars_slimmed.tsv
+	Rscript --vanilla ${params.circos} $cnv_sorted vars_slimmed.tsv $name ${params.grch38_lens}
+	"""
+} 
 
 
 process QUALIMAP {
@@ -281,6 +302,7 @@ process CNVKIT {
 
 	output:
 	path "*"
+	tuple val(name), path("${name}.sorted.cns")
 
 	script:
 	"""
@@ -329,7 +351,7 @@ Bamcollected = COLLECT_MAPPED(runlist)
 Bams	= MAPPING(FQfiles)
 mapped_bams = Bamcollected[0].mix(Bams[0]) // combine all bams from differents sources
 mapped_bais = Bamcollected[1].mix(Bams[1])
-mapped = mapped_bams.join(mapped_bais).view()
+mapped = mapped_bams.join(mapped_bais)
 
 Vcfs = SVIM(mapped)
 Vcf_paths = Vcfs[1].map({it -> [it[1]]})
@@ -348,10 +370,11 @@ Combined_filtered = Combined_collected_vcf.map({
  Mapped_annot = Annotated.join(mapped).view() // join mapped with annotated, vcf fits bam for given sample
  Mapped_vcfs = mapped.join(Vcfs[1]).view() // join mapped with variants, vcf fits bam for given sample
  Editedvcfs = EDITVCF(Mapped_annot)
- CNVKIT(mapped)
+ Cnvs = CNVKIT(mapped)
  QUALIMAP(mapped)
 
 Prefiltered = ASSEMBLY_PREFILTER(Mapped_vcfs)
+CIRCOS(Vcfs[0], Cnvs[1], Editedvcfs[0])
 
 //Prefiltered = ASSEMBLY_PREFILTER(mapped_bams,mapped_bais,Vcfs[1])
 //Assembly = SHASTA(Prefiltered[0])
