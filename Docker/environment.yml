@@ -6,6 +6,7 @@ channels:
   - conda-forge
   - bioconda
   - defaults
+  - r
 dependencies:
   - minimap2
   - samtools
@@ -16,3 +17,7 @@ dependencies:
   - pandas
   - cyvcf2
   - ensembl-vep
+  - r-essentials
+  - r-biocircos
+  - r-ggplot2
+  - r-dplyr
