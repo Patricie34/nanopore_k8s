@@ -128,6 +128,8 @@ BND_labels = sprintf( "Chr%s:%s / Chr%s:%s \n  Support = %s", BNDs_fil$ChrFrom, 
                       BNDs_fil$PosTo, BNDs_fil$Support_nonUnique)
 tracklist_BNDs = tracklist
 maxsup = max(BNDs_fil$Support_nonUnique)
+minsup = min(BNDs_fil$Support_nonUnique)
+
 
 for (i in unique(BNDs_fil$Support_nonUnique)) {
   mask = BNDs_fil$Support_nonUnique == i
@@ -143,7 +145,8 @@ for (i in unique(BNDs_fil$Support_nonUnique)) {
     labels = BND_labels[mask],
     displayLabel = FALSE,
     color = neutcol,
-    width = paste0(log((i +maxsup) / maxsup), "em")
+    width = paste0((i-minsup)/maxsup/5+0.05, "em")
+
   )
 }
 

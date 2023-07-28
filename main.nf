@@ -7,21 +7,28 @@
 process GUPPY_BASECALL {
 	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
-	container "genomicpariscentre/guppy-gpu:latest"
-	accelerator 1, type: 'nvidia.com/mig-1g.10gb'
+	container "cerit.io/docker/genomicpariscentre/guppy-gpu"
+	accelerator 1, type: 'nvidia.com/gpu'
+			label "small_process"
+
+	// accelerator 1, type: 'nvidia.com/mig-1g.10gb'
+
 
 	input:
-	tuple val(name), val(path), val(type)
+	tuple val(name), val(path), val(type), val(config)
 
 	output:
 	tuple val(name), path("basecalled/pass/*.gz")
+	tuple val(name), path("*")
+
 
 	when:
 		type == 'fast5'
 
 	script:
 	"""
-	/opt/ont/guppy/bin/guppy_basecaller -i ${path}/ -s ./basecalled --flowcell ${params.flowcell} --kit ${params.kit} --compress_fastq --recursive --num_callers ${task.cpus} -x auto
+	#/opt/ont/guppy/bin/guppy_basecaller -i ${path}/ -s ./basecalled --flowcell ${params.flowcell} --kit ${params.kit} --compress_fastq --recursive --num_callers ${task.cpus} -x auto
+	/opt/ont/guppy/bin/guppy_basecaller -i ${path} -s ./basecalled -c ${config} --compress_fastq --recursive --num_callers ${task.cpus} -x auto --progress_stats_frequency 600 --verbose_logs --trace_category_logs --fast5_out
 	"""
 } 
 
@@ -30,8 +37,11 @@ process COLLECT_BASECALLED {
 	tag "Collecting Fastq on $name using $task.cpus CPUs $task.memory"
 	//publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
 
+		label "small_process"
+
+
 	input:
-	tuple val(name), val(path), val(type)
+	tuple val(name), val(path), val(type), val(config)
 
 	output:
 	tuple val(name), path("basecalled/pass/*.fastq.gz")
@@ -49,9 +59,11 @@ process COLLECT_BASECALLED {
 process COLLECT_MAPPED {
 	tag "Collecting bam on $name using $task.cpus CPUs $task.memory"
 	//publishDir  "${params.outDir}/${name}/mapped/", mode:'copy'
+		label "small_process"
+
 
 	input:
-	tuple val(name), val(path), val(type)
+	tuple val(name), val(path), val(type), val(config)
 
 	output:
 	tuple val(name), path("${name}.sorted.bam")
@@ -90,11 +102,12 @@ process SVIM{
 	tag "Variant calling on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 
+
 	input:
 	tuple val(name), path(mapped), path(bai)
 
 	output:
-	path '*'
+	tuple val(name),path ("*")
 	tuple val(name), path("${name}.variants.vcf")
 
 	
@@ -109,7 +122,7 @@ process SVIM{
 process TAG_UNIQUE_VARS{
 	tag "Tagging unique vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
-	label "small_process"
+	//label "small_process"
 
 
 	input:
@@ -160,22 +173,14 @@ process EDITVCF {
 		
 	script:
 	"""
-#	cat ${inputvcf} | grep BND | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' > BNDlocs.bed
-#	bedtools coverage -abam BNDlocs.bed -b ${bam} -d > Coverage.txt
-#	python ${params.ComputeDistance} ${inputvcf} Coverage.txt Distanced_${name}
-
-	cat ${inputvcf} | grep BND | grep -vE 'GL000|MT|K' | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' | sort -k1,1 -k2,2V > BNDlocs.bed
-# sort -k1,3V pro grch37
+	#cat ${inputvcf} | grep BND | grep -vE 'GL000|MT|KI27' | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' | sort -k1,1 -k2,2V > BNDlocs.bed
+	#bedtools coverage causes problems with strange chroms, remove first line
+	cat ${inputvcf} | grep BND | awk -v OFS="\\t" '(\$1!~"GL|MT|KI") && (\$5!~"GL|MT|KI") {\$1=\$1;print \$1,\$2-1,\$2,\$3}' | sort -k1,1 -k2,2V | tail -n +2 > BNDlocs.bed 
 	samtools view -H $bam | grep @SQ | sed 's/@SQ\tSN:\\|LN://g' > genome.txt 
-	samtools view -H $bam
 	head -n 20 BNDlocs.bed
 	head -n 20 genome.txt
 	bedtools coverage -sorted -abam BNDlocs.bed -b ${bam} -d -g genome.txt > Coverage.txt
 	python ${params.ComputeDistance} ${inputvcf} Coverage.txt Distanced_${name}
-
-	#sort -k1,3V BNDlocs.bed > BNDsorted.bed
-	#tail -n 30 BNDlocs.bed
-	#samtools view -H ${bam}
 	"""
 } 
 
@@ -185,9 +190,7 @@ process CIRCOS{
 	publishDir  "${params.outDir}/${name}/nano/Circos/", mode:'copy'
 
 	input:
-	path(vcfs)
- tuple val(name), path(cnv_sorted)
-	tuple val(name), path(vars_edited)
+	tuple val(name),	path(vcfs), path(cnv_sorted),	path(vars_edited)
 
 
 	output:
@@ -195,7 +198,10 @@ process CIRCOS{
 	
 	script:
 	"""
-	cat $vars_edited | awk -v FS="\t" '{print \$2,\$3,\$4,\$9,\$10,\$15}' > vars_slimmed.tsv
+	echo $vcfs
+	echo $cnv_sorted
+	echo $vars_edited
+	cat $vars_edited | awk -v FS="\\t" '(\$3!~"GL|MT|KI") && (\$9!~"GL|MT|KI") {print \$2,\$3,\$4,\$9,\$10,\$15}' > vars_slimmed.tsv
 	head -n 20 vars_slimmed.tsv
 	Rscript --vanilla ${params.circos} $cnv_sorted vars_slimmed.tsv $name ${params.grch38_lens}
 	"""
@@ -345,7 +351,7 @@ workflow {
 runlist = channel.fromList(params.runs)
 FQcalled = GUPPY_BASECALL(runlist)
 FQcollected = COLLECT_BASECALLED(runlist)
-FQfiles = FQcalled.mix(FQcollected)
+FQfiles = FQcalled[0].mix(FQcollected)
 
 Bamcollected = COLLECT_MAPPED(runlist)
 Bams	= MAPPING(FQfiles)
@@ -355,7 +361,6 @@ mapped = mapped_bams.join(mapped_bais)
 
 Vcfs = SVIM(mapped)
 Vcf_paths = Vcfs[1].map({it -> [it[1]]})
-Vcf_paths.view()
 Combined_collected_vcf = Vcfs[1].combine(Vcf_paths.collect().map({it -> [it]}))
 Combined_filtered = Combined_collected_vcf.map({
 	 row ->
@@ -367,14 +372,33 @@ Combined_filtered = Combined_collected_vcf.map({
 
  Tagged = TAG_UNIQUE_VARS(Combined_filtered)
  Annotated = ANNOTATE(Tagged)
- Mapped_annot = Annotated.join(mapped).view() // join mapped with annotated, vcf fits bam for given sample
- Mapped_vcfs = mapped.join(Vcfs[1]).view() // join mapped with variants, vcf fits bam for given sample
+
+
+// //  Annotated = ANNOTATE(Vcfs[1])
+ Mapped_annot = Annotated.join(mapped) //.view() // join mapped with annotated, vcf fits bam for given sample
+ Mapped_vcfs = mapped.join(Vcfs[1]) //.view() // join mapped with variants, vcf fits bam for given sample
  Editedvcfs = EDITVCF(Mapped_annot)
  Cnvs = CNVKIT(mapped)
  QUALIMAP(mapped)
 
-Prefiltered = ASSEMBLY_PREFILTER(Mapped_vcfs)
-CIRCOS(Vcfs[0], Cnvs[1], Editedvcfs[0])
+// Prefiltered = ASSEMBLY_PREFILTER(Mapped_vcfs)
+// Vcfs[1].view()
+// Cnvs[0].view()
+// Editedvcfs[0].view() 
+
+Synchronized = Vcfs[0].join(Cnvs[1]).join(Editedvcfs[0])
+// SynchronizedParsed = Synchronized.map({
+// row -> def name = row[0]
+// 							def vcfs = row[1]
+// 							def cnvs = row[2]
+// 							def editedVcf = row[3]
+// 							[name,vcfs,cnvs,editedVcf]
+// })
+// SynchronizedParsed.view()
+CIRCOS(Synchronized)
+// CIRCOS(Synchronized[0],Synchronized[1][0], Synchronized[1][1], Synchronized[1][2])
+
+// CIRCOS(Vcfs[0], Cnvs[1], Editedvcfs[0])
 
 //Prefiltered = ASSEMBLY_PREFILTER(mapped_bams,mapped_bais,Vcfs[1])
 //Assembly = SHASTA(Prefiltered[0])

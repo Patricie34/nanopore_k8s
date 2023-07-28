@@ -3,9 +3,9 @@ import pysam
 import time
 import pandas
 
-#file_path = "/Volumes/lamb/shared/MedGen/nanobreak/src/pipeline/project/xsvato01/nanopore_k8s/bin/500.Unique.Annotated.vcf"
+#file_path = "/Volumes/share/share/110000-MED/110323-imgg/111323-plevova/01.NanoBreak/data/samples/BRNO2013/nano/mapped/Annotated5000.vcf"
 #bam_path = "/Volumes/share/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO0627/nano/mapped/BRNO0627.sorted.bam"
-#coverage_path = "/Volumes/share/share/110000-MED/999999-gic/01.NanoBreak/data/samples/BRNO1727/nano/mapped/PBcov.txt"
+#coverage_path = "/Volumes/share/share/110000-MED/110323-imgg/111323-plevova/01.NanoBreak/data/samples/BRNO2013/nano/mapped/Coverage.txt"
 
 
 def read_variants(file_path: str, coverage_path: str) -> list:
@@ -26,6 +26,9 @@ def read_variants(file_path: str, coverage_path: str) -> list:
                 "N").strip("]").strip("[").split(":")
             from_chr = rec.chrom
             from_pos = rec.pos
+
+            if rec.id == 'svim.BND.110':
+                print('I am here')
             id += 1
             if from_chr == "MT" or to_chr == "MT":
                 print(f"Skipping {rec.id}")
@@ -50,10 +53,10 @@ def read_variants(file_path: str, coverage_path: str) -> list:
                          "to_pos": int(to_pos),
                          "dist": "-" if (from_chr != to_chr) else str(abs(int(from_pos)-int(to_pos))),
                          "reads": f"{rec}".split("READS=", 1)[1].split("\t", 1)[0].split(";")[0].split(","),
-                         # "reads": f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(","),
-                         # "support" : len(f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(",")),
+                        #  "reads": f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(","),
+                         #  "support" : len(f"{rec}".split("READS=",1)[1].split("\t", 1)[0].split(",")),
                          "support": len(f"{rec}".split("READS=", 1)[1].split("\t", 1)[0].split(";")[0].split(",")),
-                         #  "coverage" : sum([x[0] for x in coverage]),
+                         #   "coverage" : sum([x[0] for x in coverage]),
                          "coverage": coverage,
                          "from_unique": f"{rec}".split("UNIQUE=")[1].split(";")[0],
                          "from_variant": f"{rec}".split('|')[1],
@@ -96,7 +99,7 @@ if __name__ == "__main__":
     print("Parsing vcf")
     t = time.time()
     vars = read_variants(file_path=sys.argv[1], coverage_path=sys.argv[2])
-    #vars = read_variants(file_path, coverage_path )
+    #vars = read_variants(file_path, coverage_path)
     print(time.time() - t)
 
     print("Filtering vcf")
@@ -116,7 +119,7 @@ if __name__ == "__main__":
             f.write(
                 f"{v['id']}\t{v['dist']}\t"
                 f"{v['from_chr']}\t{v['from_pos']}\t{v['from_unique']}\t{v['from_variant']}\t{v['from_gene']}\t{v['from_gene_ID']}\t"
-                f"{v['to_chr']}\t{v['to_pos']}\t{v['to_unique']}\t{v['to_variant']}\t{v['to_gene']}\t{v['to_gene_ID']}\t"
+                f"{v['to_chr']}\t{v['to_pos']}\t{v['to_variant']}\t{v['to_gene']}\t{v['to_gene_ID']}\t"
                 f"{v['support']}\t{v['coverage']}\t\t{v['line']}")
 
     with open(f"Dedup_1000dist{sys.argv[3]}.tsv", 'w') as f:
@@ -129,5 +132,5 @@ if __name__ == "__main__":
                 f.write(
                     f"{v['id']}\t{v['dist']}\t"
                     f"{v['from_chr']}\t{v['from_pos']}\t{v['from_unique']}\t{v['from_variant']}\t{v['from_gene']}\t{v['from_gene_ID']}\t"
-                    f"{v['to_chr']}\t{v['to_pos']}\t{v['to_unique']}\t{v['to_variant']}\t{v['to_gene']}\t{v['to_gene_ID']}\t"
+                    f"{v['to_chr']}\t{v['to_pos']}\t{v['to_variant']}\t{v['to_gene']}\t{v['to_gene_ID']}\t"
                     f"{v['support']}\t{v['coverage']}\t\t{v['line']}")
