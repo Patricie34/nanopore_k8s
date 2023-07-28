@@ -1,18 +1,9 @@
-// run = "${params.data}".split("/")
-// run = run[run.size()-1]
-// resultsDir = "${params.outDir}/${run}/nano"
-
-
-
 process GUPPY_BASECALL {
 	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
 	container "cerit.io/docker/genomicpariscentre/guppy-gpu"
 	accelerator 1, type: 'nvidia.com/gpu'
-			label "small_process"
-
-	// accelerator 1, type: 'nvidia.com/mig-1g.10gb'
-
+	label "small_process"
 
 	input:
 	tuple val(name), val(path), val(type), val(config)
@@ -20,7 +11,6 @@ process GUPPY_BASECALL {
 	output:
 	tuple val(name), path("basecalled/pass/*.gz")
 	tuple val(name), path("*")
-
 
 	when:
 		type == 'fast5'
@@ -32,13 +22,9 @@ process GUPPY_BASECALL {
 	"""
 } 
 
-
 process COLLECT_BASECALLED {
 	tag "Collecting Fastq on $name using $task.cpus CPUs $task.memory"
-	//publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
-
-		label "small_process"
-
+	label "small_process"
 
 	input:
 	tuple val(name), val(path), val(type), val(config)
@@ -58,9 +44,7 @@ process COLLECT_BASECALLED {
 
 process COLLECT_MAPPED {
 	tag "Collecting bam on $name using $task.cpus CPUs $task.memory"
-	//publishDir  "${params.outDir}/${name}/mapped/", mode:'copy'
-		label "small_process"
-
+	label "small_process"
 
 	input:
 	tuple val(name), val(path), val(type), val(config)
@@ -81,6 +65,7 @@ process COLLECT_MAPPED {
 process MAPPING {
 	tag "Mapping on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/mapped/", mode:'copy'
+	label "medium_cpus"
 
 	input:
 	tuple val(name), path(reads)
@@ -101,6 +86,8 @@ process MAPPING {
 process SVIM{
 	tag "Variant calling on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	label "medium_mem"
+	label "medium_cpus"
 
 
 	input:
@@ -109,7 +96,6 @@ process SVIM{
 	output:
 	tuple val(name),path ("*")
 	tuple val(name), path("${name}.variants.vcf")
-
 	
 	script:
 	"""
@@ -122,15 +108,12 @@ process SVIM{
 process TAG_UNIQUE_VARS{
 	tag "Tagging unique vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
-	//label "small_process"
-
 
 	input:
  tuple val(name), path(vcf), path(vcf_filter_with)
 
 	output:
 	tuple val(name), path("*UniqueTag.vcf")
-
 	
 	script:
 	"""
@@ -145,14 +128,12 @@ process ANNOTATE{
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 	label "big_mem"
 
-
 	input:
  tuple val(name), path(vcf)
 
 	output:
 	tuple val(name), path("${name}.UniqueTag.Annotated.vcf")
 
-	
 	script:
 	"""
 	vep -i ${vcf} --cache --cache_version 90 --dir_cache ${params.vep} --fasta ${params.ref} --merged --offline --format vcf --vcf --everything --canonical --force_overwrite -o ${name}.UniqueTag.Annotated.vcf
@@ -192,28 +173,47 @@ process CIRCOS{
 	input:
 	tuple val(name),	path(vcfs), path(cnv_sorted),	path(vars_edited)
 
-
 	output:
 	path("*.html")
 	
 	script:
 	"""
-	echo $vcfs
-	echo $cnv_sorted
-	echo $vars_edited
+
 	cat $vars_edited | awk -v FS="\\t" '(\$3!~"GL|MT|KI") && (\$9!~"GL|MT|KI") {print \$2,\$3,\$4,\$9,\$10,\$15}' > vars_slimmed.tsv
 	head -n 20 vars_slimmed.tsv
 	Rscript --vanilla ${params.circos} $cnv_sorted vars_slimmed.tsv $name ${params.grch38_lens}
 	"""
 } 
 
+process HEATMAP{
+	tag "Creating heatmap on $name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${name}/nano/Heatmap/", mode:'copy'
+	container "rnakato/juicer"
+	label "small_process"
+
+	input:
+	tuple val(name), path(deduplicatedTsv)
+
+	output:
+	tuple val(name), path("*.hic")
+	
+	script:
+	"""
+	sleep infinity
+	cat $deduplicatedTsv| awk '{printf "%s chr%s %s %s %s chr%s %s %s\\n", 0,\$3,\$4,0,12,\$9,\$10,1;}' FS='\\t' > ${name}_preHiC.txt
+	cat ${name}_preHiC.txt | awk '{if (\$2 <= \$6) print \$0; else print \$5,\$6,\$7,\$8,\$1,\$2,\$3,\$4}' OFS=" " > ${name}_preHic_orderedChroms.txt
+	cat ${name}_preHic_orderedChroms.txt| sort -k2,2d -k6,6d -k3,3n -k7,7n > ${name}_preHiC_sorted.txt
+	java -Xmx2g -jar juicer_tools.2.20.00.jar pre ${name}_preHiC_sorted.txt ${name}.hic hg38 -n
+	"""
+} 
+
 
 process QUALIMAP {
-		tag "Qualimap $name using $task.cpus CPUs $task.memory"
-
+	tag "Qualimap $name using $task.cpus CPUs $task.memory"
 	container 'pegi3s/qualimap'
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
 	label "big_mem"
+	label "medium_cpus"
 	
 	input:
 	tuple val(name), path(bams), path(bais)
@@ -232,7 +232,6 @@ process FLYE {
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
 	label "big_mem"
 
-
 	input:
 	tuple val(name), path (fastq)
 
@@ -247,8 +246,7 @@ process FLYE {
 
 
 process ASSEMBLY_PREFILTER {
-		tag "Prefiltering BNDs on $name using $task.cpus CPUs $task.memory"
-
+	tag "Prefiltering BNDs on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/SHASTA/", mode:'copy'
 
 	input:
@@ -346,8 +344,6 @@ process MUMMER {
 }
 
 workflow {
-//println("${params.data}")
-//println("Run name: ${run}")
 runlist = channel.fromList(params.runs)
 FQcalled = GUPPY_BASECALL(runlist)
 FQcollected = COLLECT_BASECALLED(runlist)
@@ -363,42 +359,23 @@ Vcfs = SVIM(mapped)
 Vcf_paths = Vcfs[1].map({it -> [it[1]]})
 Combined_collected_vcf = Vcfs[1].combine(Vcf_paths.collect().map({it -> [it]}))
 Combined_filtered = Combined_collected_vcf.map({
-	 row ->
-            def name      = row[0]
-												def vcf       = row[1]
-            def filtered    = removeSame(vcf, row[2])
-            [name,vcf, filtered]	
+	row ->
+	def name = row[0]
+	def vcf = row[1]
+	def filtered  = removeSame(vcf, row[2])
+	[name,vcf, filtered]	
 	})
 
  Tagged = TAG_UNIQUE_VARS(Combined_filtered)
  Annotated = ANNOTATE(Tagged)
-
-
-// //  Annotated = ANNOTATE(Vcfs[1])
  Mapped_annot = Annotated.join(mapped) //.view() // join mapped with annotated, vcf fits bam for given sample
  Mapped_vcfs = mapped.join(Vcfs[1]) //.view() // join mapped with variants, vcf fits bam for given sample
  Editedvcfs = EDITVCF(Mapped_annot)
  Cnvs = CNVKIT(mapped)
  QUALIMAP(mapped)
-
-// Prefiltered = ASSEMBLY_PREFILTER(Mapped_vcfs)
-// Vcfs[1].view()
-// Cnvs[0].view()
-// Editedvcfs[0].view() 
-
 Synchronized = Vcfs[0].join(Cnvs[1]).join(Editedvcfs[0])
-// SynchronizedParsed = Synchronized.map({
-// row -> def name = row[0]
-// 							def vcfs = row[1]
-// 							def cnvs = row[2]
-// 							def editedVcf = row[3]
-// 							[name,vcfs,cnvs,editedVcf]
-// })
-// SynchronizedParsed.view()
 CIRCOS(Synchronized)
-// CIRCOS(Synchronized[0],Synchronized[1][0], Synchronized[1][1], Synchronized[1][2])
-
-// CIRCOS(Vcfs[0], Cnvs[1], Editedvcfs[0])
+HEATMAP(Editedvcfs[0])
 
 //Prefiltered = ASSEMBLY_PREFILTER(mapped_bams,mapped_bais,Vcfs[1])
 //Assembly = SHASTA(Prefiltered[0])
