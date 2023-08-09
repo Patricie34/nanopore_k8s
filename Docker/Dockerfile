@@ -8,7 +8,7 @@ FROM mambaorg/micromamba:jammy
 
 #RUN ./bin/micromamba shell init -s bash -p ~/micromamba
 #RUN source ~/.bashrc
-
+RUN apt-get install libdbi-perl
 COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /
 RUN micromamba install -y -n base -f /environment.yml && \
     micromamba clean --all --yes
