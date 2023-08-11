@@ -17,7 +17,7 @@ dependencies:
   - bedtools
   - pandas
   - cyvcf2
-  - ensembl-vep = 108.0
+  - ensembl-vep = 96.0
   - r-essentials
   - r-biocircos
   - r-ggplot2
