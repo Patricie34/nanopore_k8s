@@ -126,6 +126,7 @@ process TAG_UNIQUE_VARS{
 process ANNOTATE{
 	tag "Annotating vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+        container "registry.gitlab.ics.muni.cz:443/450402/btk_k8s:21"
 	label "big_mem"
 
 	input:
@@ -188,7 +189,7 @@ process CIRCOS{
 process HEATMAP{
 	tag "Creating heatmap on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/Heatmap/", mode:'copy'
-	container "rnakato/juicer"
+	container "rnakato/juicer:1.6.2"
 	label "small_process"
 
 	input:
@@ -199,11 +200,11 @@ process HEATMAP{
 	
 	script:
 	"""
-	sleep infinity
 	cat $deduplicatedTsv| awk '{printf "%s chr%s %s %s %s chr%s %s %s\\n", 0,\$3,\$4,0,12,\$9,\$10,1;}' FS='\\t' > ${name}_preHiC.txt
 	cat ${name}_preHiC.txt | awk '{if (\$2 <= \$6) print \$0; else print \$5,\$6,\$7,\$8,\$1,\$2,\$3,\$4}' OFS=" " > ${name}_preHic_orderedChroms.txt
 	cat ${name}_preHic_orderedChroms.txt| sort -k2,2d -k6,6d -k3,3n -k7,7n > ${name}_preHiC_sorted.txt
-	java -Xmx2g -jar juicer_tools.2.20.00.jar pre ${name}_preHiC_sorted.txt ${name}.hic hg38 -n
+	#java -Xms512m -Xmx32384m -jar
+	java -Xmx2g -jar /opt/juicer/scripts/common/juicer_tools.jar pre ${name}_preHiC_sorted.txt ${name}.hic hg38 -n
 	"""
 } 
 
