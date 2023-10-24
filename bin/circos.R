@@ -118,7 +118,7 @@ BNDs <- read.table(vars_tsv, header = TRUE, sep = "")
 
 
 BNDs_fil = BNDs %>% mutate(distance = as.integer(distance)) %>%
-                            filter(Support_nonUnique > 3,
+                            filter(Support_nonUnique > 1000, #filter by coverage
                            is.na(distance) | distance > 100000,
                            !grepl('GL|M|K', ChrTo),
                            !grepl('GL|M|K', ChrFrom))

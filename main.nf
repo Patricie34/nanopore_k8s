@@ -1,106 +1,152 @@
+process REFORMAT_SAMPLE{
+ tag "Reformating $sample.name using $task.cpus CPUs $task.memory"
+ label "small_process"
+
+ input:
+ val sample
+
+ output:
+ tuple val(sample.name),val(sample.reference), val(sample)
+
+  """ """ //this is not an error
+}
+
+
+process REFORMAT_PARAMS{
+	tag "Reformating $references.refname using $task.cpus CPUs $task.memory"
+ label "small_process"
+
+ input:
+ val references
+
+ output:
+ tuple val(references), val(references.refname)
+
+  """ """ //this is not an error
+}
+
 process GUPPY_BASECALL {
-	tag "Basecalling on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
+	tag "Basecalling on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${sample.name}/nano/", mode:'copy'
 	container "cerit.io/docker/genomicpariscentre/guppy-gpu"
 	accelerator 1, type: 'nvidia.com/gpu'
-	label "small_process"
+	label "medium_mem"
 
 	input:
-	tuple val(name), val(path), val(type), val(config)
+		val sample
 
 	output:
-	tuple val(name), path("basecalled/pass/*.gz")
-	tuple val(name), path("*")
+	tuple val(sample.name), path("basecalled/pass/*.gz")
+	path '*'
 
 	when:
-		type == 'fast5'
+		sample.type == 'fast5'
 
 	script:
 	"""
-	/opt/ont/guppy/bin/guppy_basecaller -i ${path} -s ./basecalled -c ${config} --compress_fastq --recursive --num_callers ${task.cpus} -x auto --progress_stats_frequency 999 --verbose_logs --trace_category_logs --fast5_out
+	/opt/ont/guppy/bin/guppy_basecaller -i ${sample.path} -s ./basecalled -c ${sample.config} --compress_fastq --recursive --num_callers ${task.cpus} -x auto --progress_stats_frequency 999 --verbose_logs --trace_category_logs --fast5_out
 	"""
 } 
 
 process COLLECT_BASECALLED {
-	tag "Collecting Fastq on $name using $task.cpus CPUs $task.memory"
+	tag "Collecting Fastq on $sample.name using $task.cpus CPUs $task.memory"
 	label "small_process"
 
 	input:
-	tuple val(name), val(path), val(type), val(config)
+	val sample
 
 	output:
-	tuple val(name), path("basecalled/pass/*.fastq.gz")
+		tuple val(sample.name), path("basecalled/pass/*.gz")
 
 	when:
-		type == 'fastq'
+		sample.type == 'fastq'
 
 	script:
 	"""
+	echo "Collecting fastqs for $sample.name"
 	mkdir -p basecalled/pass/
-	find ${path} -type f -name '*.fastq.gz' | xargs -I % cp % ./basecalled/pass/
+	find ${sample.path} -type f -name '*.fastq.gz' | xargs -I % cp % ./basecalled/pass/
 	"""
 } 
 
-process COLLECT_MAPPED {
-	tag "Collecting bam on $name using $task.cpus CPUs $task.memory"
+process COLLECT_BAMs {
+	tag "Collecting bam on $sample.name using $task.cpus CPUs $task.memory"
 	label "small_process"
 
 	input:
-	tuple val(name), val(path), val(type), val(config)
+	tuple val(name), val(sample)
 
 	output:
-	tuple val(name), path("${name}.sorted.bam")
-	tuple val(name), path("${name}.sorted.bam.bai")
-
+	tuple val(sample.name), val(sample), path("${sample.name}.sorted.bam"), path("${sample.name}.sorted.bam.bai")
+	
 	when:
-		type == 'bam'
+		sample.type == 'bam'
 
 	script:
 	"""
-	find ${path} -type f -name '*.ba*' | xargs -I % cp % .
+	echo "Collecting bams for $sample.name"
+	find ${sample.path} -type f -name '*.ba*' | xargs -I % cp % .
 	"""
 } 
 
 process MAPPING {
-	tag "Mapping on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/mapped/", mode:'copy'
+	tag "Mapping on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${sample.name}/nano/mapped/", mode:'copy'
 	label "medium_cpus"
 
- pod {name "Mapping_${name}_start_${new Date().getTime()}"} //testing
-
 	input:
-	tuple val(name), path(reads)
+	tuple val(name), path(reads), val(sample)
 
 	output:
-	tuple val(name), path("${name}.sorted.bam")
-	tuple val(name), path("${name}.sorted.bam.bai")
-	
+	tuple val(sample.name), val(sample), path("${name}.sorted.bam"), path("${name}.sorted.bam.bai")
+
 	script:
 	"""
-	minimap2 --MD -a -t ${task.cpus} ${params.ref} $reads > ${name}.mapped.sam
-	samtools view -bS ${name}.mapped.sam > ${name}.mapped.bam
-	samtools sort -o ${name}.sorted.bam ${name}.mapped.bam
+	minimap2 --MD -a -t ${task.cpus} ${sample.ref} $reads > ${name}.sam
+	samtools view -bS ${name}.sam > ${name}.bam
+	samtools sort -o ${name}.sorted.bam ${name}.bam
 	samtools index ${name}.sorted.bam ${name}.sorted.bam.bai	
 	"""
 } 
 
 process SVIM{
-	tag "Variant calling on $name using $task.cpus CPUs $task.memory"
+	tag "Variant calling using SVIM on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 	label "medium_mem"
 	label "medium_cpus"
 
 	input:
-	tuple val(name), path(mapped), path(bai)
+	tuple val(name), val(sample), path(bam), path(bai)
+
 
 	output:
-	tuple val(name),path ("*")
-	tuple val(name), path("${name}.variants.vcf")
+	tuple val(name), path ("*")
+	tuple val(name), val(sample), path("${name}.variants.vcf")
 	
 	script:
 	"""
-	svim alignment ./ ${mapped} ${params.ref} --minimum_depth 1 --read_names --all_bnds
+	svim alignment ./ ${bam} ${params.GrCh38ref} --minimum_depth 1 --read_names --all_bnds
 	mv variants.vcf ${name}.variants.vcf
+	"""
+} 
+
+process SNIFFLES{
+	tag "Variant calling using SNIFFLES on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	label "medium_mem"
+	label "medium_cpus"
+
+	input:
+	tuple val(name), val(sample), path(bam), path(bai)
+
+	output:
+	tuple val(name), path ("*")
+	tuple val(name), val(sample), path("${name}.variants.vcf")
+	
+	script:
+	"""
+	sniffles --input ${bam} --vcf ${sample.name}.vcf --reference ${params.GrCh38ref} --mosaic
+
 	"""
 } 
 
@@ -112,7 +158,7 @@ process TAG_UNIQUE_VARS{
  tuple val(name), path(vcf), path(vcf_filter_with)
 
 	output:
-	tuple val(name), path("*UniqueTag.vcf")
+	tuple val(name), path("*UniqueTag.vcf"), val(sample)
 	
 	script:
 	"""
@@ -132,11 +178,11 @@ process ANNOTATE{
  tuple val(name), path(vcf)
 
 	output:
-	tuple val(name), path("${name}.UniqueTag.Annotated.vcf")
+	tuple val(name), path("${name}.UniqueTag.Annotated.vcf"), val(sample)
 
 	script:
 	"""
-	vep -i ${vcf} --cache --cache_version 90 --dir_cache ${params.vep} --fasta ${params.ref} --merged --offline --format vcf --vcf --everything --canonical --force_overwrite -o ${name}.UniqueTag.Annotated.vcf
+	vep -i ${vcf} --cache --cache_version 90 --dir_cache ${params.GrCh38vep} --fasta ${params.GrCh38ref} --merged --offline --format vcf --vcf --everything --canonical --force_overwrite -o ${name}.UniqueTag.Annotated.vcf
 	"""
 } 
 
@@ -149,7 +195,7 @@ process EDITVCF {
 	tuple val(name), path(inputvcf), path(bam) ,path(bai)
 
 	output:
-	tuple val(name), path("Dedup_1000distDistanced_${name}.tsv")
+	tuple val(name), path("Dedup_1000distDistanced_${name}.tsv"), val(sample)
 	path('*')
 		
 	script:
@@ -157,8 +203,8 @@ process EDITVCF {
 	#cat ${inputvcf} | grep BND | grep -vE 'GL000|MT|KI27' | awk -v OFS="\\t" '{print \$1,\$2-1,\$2,\$3}' | sort -k1,1 -k2,2V > BNDlocs.bed
 	#bedtools coverage causes problems with strange chroms, remove first line
 	#bedtools coverage -sorted -abam BNDlocs.bed -b ${bam} -d -split -g genome.txt > Coverage.txt
-	#bedtools map -c 4 -a Coverage.txt -b $params.cytomapGRCh38 -o concat > CoverageCytomap.txt
-	#bedtools map -c 4 -a CoverageCytomap.txt -b $params.CNVdbGRCh38 -o collapse,count > CovCytoCNVdb.txt
+	#bedtools map -c 4 -a Coverage.txt -b $params.GrCh38cytomap -o concat > CoverageCytomap.txt
+	#bedtools map -c 4 -a CoverageCytomap.txt -b $params.GrCh38CNVdb -o collapse,count > CovCytoCNVdb.txt
 
 
 	cat ${inputvcf} | grep BND | awk -v OFS="\\t" '(\$1!~"GL|MT|KI") && (\$5!~"GL|MT|KI") {\$1=\$1;print \$1,\$2-1,\$2,\$3}' | sort -k1,1 -k2,2V | tail -n +2 > BNDlocs.bed 
@@ -166,8 +212,8 @@ process EDITVCF {
 	head -n 20 BNDlocs.bed
 	head -n 20 genome.txt
 	bedtools coverage -sorted -abam BNDlocs.bed -b ${bam} -d -split -g genome.txt \
-	| bedtools map -c 4 -a - -b $params.cytomapGRCh38 -o concat \
-	| bedtools map -c 4,4,5 -a - -b $params.CNVdbGRCh38 -o collapse,count,collapse \
+	| bedtools map -c 4 -a - -b $params.GrCh38cytomap -o concat \
+	| bedtools map -c 4,4,5 -a - -b $params.GrCh38CNVdb -o collapse,count,collapse \
 	> CovCytoCNVdb.txt
 
 	python ${params.ComputeDistance} ${inputvcf} CovCytoCNVdb.txt Distanced_${name}
@@ -190,7 +236,7 @@ process CIRCOS{
 
 	cat $vars_edited | awk -v FS="\\t" '(\$3!~"GL|MT|KI") && (\$9!~"GL|MT|KI") {print \$2,\$3,\$4,\$9,\$10,\$15}' > vars_slimmed.tsv
 	head -n 20 vars_slimmed.tsv
-	Rscript --vanilla ${params.circos} $cnv_sorted vars_slimmed.tsv $name ${params.grch38_lens}
+	Rscript --vanilla ${params.Circos} $cnv_sorted vars_slimmed.tsv $name ${params.GrCh38lens}
 	"""
 } 
 
@@ -225,14 +271,14 @@ process QUALIMAP {
 	label "medium_cpus"
 	
 	input:
-	tuple val(name), path(bams), path(bais)
+	tuple val(name), path(BAMmapped), path(bais)
 
 	output:
 	path "qualimap/*"
 
 	script:
 	"""
-	qualimap bamqc -bam ${bams} -nw 5000 -nt 14 --java-mem-size=60G -c -outdir ./qualimap
+	qualimap bamqc -bam ${BAMmapped} -nw 5000 -nt 14 --java-mem-size=60G -c -outdir ./qualimap
 	"""
 }
 
@@ -311,7 +357,7 @@ process CNVKIT {
 	publishDir  "${params.outDir}/${name}/nano/CNVkit", mode:'copy'
 
 	input:
-	tuple val(name), path(mapped), path(bai)
+	tuple val(name), val(sample), path(bam), path(bai)
 
 	output:
 	path "*"
@@ -319,11 +365,11 @@ process CNVKIT {
 
 	script:
 	"""
-	cnvkit.py batch ${mapped} -n -m wgs -f ${params.ref} --annotate ${params.refFlat} -p $task.cpus --target-avg-size 1000
+	cnvkit.py batch ${bam} -n -m wgs -f ${sample.ref} --annotate ${sample.refFlat} -p $task.cpus --target-avg-size 1000
 	cat ${name}.sorted.cns | grep -v GL000 > ${name}.cns
 	cat ${name}.sorted.cnr | grep -v GL000 > ${name}.cnr
 
-	cnvkit.py segment ${idPatient}.cnr -p $task.cpus -m hmm -o ${idPatient}.cns
+	#cnvkit.py segment ${name}.cnr -p $task.cpus -m hmm -o ${name}.cns
 
 	cnvkit.py scatter -s ${name}.cn{s,r} --y-max=3 --y-min=-3 -o ${name}.scatter.pdf
   
@@ -353,31 +399,59 @@ process MUMMER {
 
 	script:
 	"""
-	#dnadiff -p dnadiff -t $task.cpus ${params.ref} ${assembly}
+	#dnadiff -p dnadiff -t $task.cpus ${params.GrCh38ref} ${assembly}
 	#	sleep infinity
 
-	nucmer -t $task.cpus ${params.ref} ${assembly}
-#run-mummer3 -t $task.cpus ${params.ref} ${assembly}
+	nucmer -t $task.cpus ${params.GrCh38ref} ${assembly}
+#run-mummer3 -t $task.cpus ${params.GrCh38ref} ${assembly}
 #mummerplot out.delta
 	"""
 }
 
 workflow {
-runlist = channel.fromList(params.runs)
-FQcalled = GUPPY_BASECALL(runlist)
+runlist = channel.fromList(params.samplesheet)
+references = channel.fromList(params.ref_specific)
+samplesReformated = REFORMAT_SAMPLE(runlist)
+referencesReformated = REFORMAT_PARAMS(references)
+
+samplesWithReferences = samplesReformated.combine(referencesReformated,by:1)
+	.map({ sample -> [sample[1],sample[2]+(sample[3]) ]})
+	// .view{"____________samplesWithReferences_____________: $it"}
+
+FQcalled = GUPPY_BASECALL(runlist)[0]
+FQcollected = COLLECT_BASECALLED(runlist)
+FQs = FQcalled.mix(FQcollected) //combine fq from different sources
+
+//FQs.join(samplesWithReferences).view {"____________Combined FastQs_____________: $it"}
+BAMmapped	= MAPPING(FQs.join(samplesWithReferences))
+ BAMcollected = COLLECT_BAMs(samplesWithReferences)
+	// .view{"____________Collected BAMS_____________: $it"}
+
+// FQcalled = GUPPY_BASECALL(runlist)
 // FQcollected = COLLECT_BASECALLED(runlist)
-// FQfiles = FQcalled[0].mix(FQcollected)
+// FQs = FQcalled.mix(FQcollected) //combine fq from different sources
 
-// Bamcollected = COLLECT_MAPPED(runlist)
-// Bams	= MAPPING(FQfiles)
-// mapped_bams = Bamcollected[0].mix(Bams[0]) // combine all bams from differents sources
-// mapped_bais = Bamcollected[1].mix(Bams[1])
-// mapped = mapped_bams.join(mapped_bais)
+// BAMmapped	= MAPPING(FQs.join(samplesReformated))
+// BAMcollected = COLLECT_BAMs(runlist)
 
-// Vcfs = SVIM(mapped)
+//// THIS COULD BE REWRTITTEN?
+//BAMs_BAMmapped = BAMcollected[0].mix(BAMmapped[0]) // combine all BAMmapped from differents sources
+//BAMs_bais = BAMcollected[1].mix(BAMmapped[1])
+//BAMs = BAMs_BAMmapped.join(BAMs_bais)
+/////here I need BAMmapped with rest of sample info 
+// BAMs = BAMcollected.mix(BAMmapped).join(samplesReformated)
+
+BAMs = BAMcollected.mix(BAMmapped)
+.view{"____________All BAMS_____________: $it"}
+// BAMs.view()
+
+///////////////////////////////////////////////
+Vcfs = SVIM(BAMs)
+Cnvs = CNVKIT(BAMs)
 // Vcf_paths = Vcfs[1].map({it -> [it[1]]})
-// Combined_collected_vcf = Vcfs[1].combine(Vcf_paths.collect().map({it -> [it]}))
+// Combined_collected_vcf = Vcfs[1].combine(Vcf_paths.collect().map({it -> [it]})) //
 // Combined_filtered = Combined_collected_vcf.map({
+// 	// get one vcf and all other vcfs
 // 	row ->
 // 	def name = row[0]
 // 	def vcf = row[1]
@@ -387,39 +461,59 @@ FQcalled = GUPPY_BASECALL(runlist)
 
 //  Tagged = TAG_UNIQUE_VARS(Combined_filtered)
 //  Annotated = ANNOTATE(Tagged)
-//  Mapped_annot = Annotated.join(mapped) //.view() // join mapped with annotated, vcf fits bam for given sample
-//  Mapped_vcfs = mapped.join(Vcfs[1]) //.view() // join mapped with variants, vcf fits bam for given sample
-//  Editedvcfs = EDITVCF(Mapped_annot)
-//  Cnvs = CNVKIT(mapped)
-//  QUALIMAP(mapped)
+//  BAMs_annot = Annotated.join(BAMs) //.view() // join BAMs with annotated, vcf fits bam for given sample
+//  BAMs_vcfs = BAMs.join(Vcfs[1]) //.view() // join BAMs with variants, vcf fits bam for given sample
+//  Editedvcfs = EDITVCF(BAMs_annot)
+//  Cnvs = CNVKIT(BAMs)
+//  QUALIMAP(BAMs)
 // Synchronized = Vcfs[0].join(Cnvs[1]).join(Editedvcfs[0])
 // CIRCOS(Synchronized)
 // HEATMAP(Editedvcfs[0])
 
-// //Prefiltered = ASSEMBLY_PREFILTER(mapped_bams,mapped_bais,Vcfs[1])
-// //Assembly = SHASTA(Prefiltered[0])
+// Prefiltered = ASSEMBLY_PREFILTER(BAMs_BAMmapped,BAMs_bais,Vcfs[1])
+// Assembly = SHASTA(Prefiltered[0])
 
-// //assembly = SHASTA(FQfiles)
-// //MUMMER(Assembly[1])
+// assembly = SHASTA(FQs)
+// MUMMER(Assembly[1])
 
-// /////////////////////////////////
-//  //spolecne(FQfiles)
-// //rawfastq	= GUPPY_BASECALL()
-// //FLYE(rawfastq.map(rawfastq)
-// //mapped		= MAPPING(rawfastq.map({ file -> [run, file]}))
-// // rawfastq.collect().view()
-// // assembly = SHASTA(rawfastq.collect(),mapped[0])
+// ///////////////////////////////
+//  spolecne(FQs)
+// rawfastq	= GUPPY_BASECALL()
+// FLYE(rawfastq.map(rawfastq)
+// BAMs		= MAPPING(rawfastq.map({ file -> [run, file]}))
+// rawfastq.collect().view()
+// assembly = SHASTA(rawfastq.collect(),BAMs[0])
 }
 
 
-def removeSame(nm,lst) {
+// def removeSame(nm,lst) {
 
-	def list=[]
-        for (int i = 0; i < lst.size(); i++) {
-         if (lst[i] != nm){
-	     list.add(lst[i])
-       // lst.remove(i)
-	  }
-        }
-        return(list)
-  }
+// 	def list=[]
+//         for (int i = 0; i < lst.size(); i++) {
+//          if (lst[i] != nm){
+// 	     list.add(lst[i])
+//        // lst.remove(i)
+// 	  }
+//         }
+//         return(list)
+//   }
+
+
+// 	case "$sample.reference" in
+//   "GrCh38")
+//     echo "GrCh38 reference selected."
+//     	minimap2 --MD -a -t ${task.cpus} ${params.GrCh38ref} $reads > ${name}.BAMs.sam
+//     ;;
+//   "GrCh37")
+//     echo "GrCh37 reference selected."
+//    	minimap2 --MD -a -t ${task.cpus} ${params.GrCh38ref} $reads > ${name}.BAMs.sam
+//     ;;
+//   "T2T")
+//     echo "T2T reference selected."
+//     # Commands for Option C
+//     ;;
+//   *)
+//     echo "Invalid option selected."
+//     exit 1
+//     ;;
+// esac
