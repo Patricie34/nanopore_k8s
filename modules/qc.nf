@@ -1,0 +1,18 @@
+process QUALIMAP {
+	tag "Qualimap $name using $task.cpus CPUs $task.memory"
+	container 'pegi3s/qualimap'
+	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
+	label "big_mem"
+	label "medium_cpus"
+	
+	input:
+	tuple val(name), val(sample), path(bam), path(bai)
+
+	output:
+	path "qualimap/*"
+
+	script:
+	"""
+	qualimap bamqc -bam ${bam} -nw 5000 -nt 14 --java-mem-size=60G -c -outdir ./qualimap
+	"""
+}
