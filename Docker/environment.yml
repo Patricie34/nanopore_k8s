@@ -6,20 +6,14 @@ channels:
   - conda-forge
   - bioconda
   - defaults
-  - r
 dependencies:
   - minimap2
-  - perl-dbi
   - samtools
+  - survivor
   - svim
   - pysam
   - shasta
   - bedtools
   - pandas
   - cyvcf2
-  - ensembl-vep = 96.0
-  - r-essentials
-  - r-biocircos
-  - r-ggplot2
-  - r-dplyr
-  - r-htmlwidgets
+  - ensembl-vep
