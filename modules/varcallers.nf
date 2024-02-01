@@ -14,7 +14,7 @@ process SVIM {
 	"""
 	echo SVIM on ${name}
 	svim alignment ./ ${bam} ${params.GrCh38ref} --minimum_depth 2 --read_names --all_bnds
-	mv variants.vcf ${name}.variants.vcf
+	mv variants.vcf ${name}.svim.vcf
 	"""
 } 
 
@@ -27,7 +27,7 @@ process PEPPER_DEEPVARIANT {
  container "kishwars/pepper_deepvariant:r0.8-gpu"
 	label "medium_mem"
 	label "medium_cpus"
-	
+
  input:
 	tuple val(name), val(sample), path(bam), path(bai)
 
@@ -43,9 +43,6 @@ process PEPPER_DEEPVARIANT {
 
 	"""
 	echo PEPPER_DEEPVARIANT on ${name}
-	#samtools view -b -f 0x900 -q 10 ${bam} > primary_reads.bam
-	#samtools sort -o ${name}.primary.sorted.bam primary_reads.bam
-	#samtools index ${name}.primary.sorted.bam ${name}.primary.sorted.bam.bai	
  run_pepper_margin_deepvariant call_variant -b $bam -f ${sample.ref} -o ./ -p ${name} -s ${name} -t ${task.cpus} --${model} --phased_output
 	"""
 } 

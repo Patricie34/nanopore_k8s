@@ -1,6 +1,6 @@
 process DELLY_SVs {
 	tag "DELLY_SVs on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/Delly/SVs/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	container "dellytools/delly:latest"
  label "small_process"
 
@@ -36,7 +36,7 @@ process DELLY_merge_SVs {
 
 process DELLY_genotype_SVs {
 	tag "DELLY_genotype_SVs on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/Delly/SVs/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	container "dellytools/delly:latest"
  label "small_process"
 
@@ -99,7 +99,7 @@ process DELLY_filter_merge_genotyped {
 
 process DELLY_get_genesBNDs {
 	tag "DELLY_get_genesBNDs on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/Delly/SVs/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	container "staphb/bcftools:1.18"
  label "small_process"
 
@@ -120,7 +120,7 @@ process DELLY_get_genesBNDs {
 
 process DELLY_annot_genesBNDs {
 	tag "DELLY_annot_genesBNDs on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/Delly/SVs/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	container "trausch/alfred:latest"
  label "small_process"
 
@@ -158,7 +158,7 @@ process DELLY_CNVs {
 
 	process DELLY_CNV_PLOT {
 	tag "DELLY_CNVs on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/Delly/CNVs/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/CNVs/", mode:'copy'
  label "small_process"
 
 	input:

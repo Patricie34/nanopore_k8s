@@ -81,7 +81,7 @@ process ANNOTATE_SURVIROR {
 
 process FILTER_SVIM {
 	tag "FILTER_SVIM vcf vars on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	//publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
  label "small_process"
 
 	input:
@@ -180,7 +180,7 @@ process PHASE_WHATSHAP {
 
 process CALC_COVERAGE {
  tag "CALC_COVERAGE VCF on $name using $task.cpus CPUs $task.memory"
- publishDir  "${params.outDir}/${name}/nano/VarCal/debug", mode:'copy'
+ //publishDir "${params.outDir}/${name}/nano/VarCal/debug", mode:'copy'
 
  input:
  tuple val(name), val(sample), path(inputvcf), path(bam), path(bai)
@@ -211,7 +211,7 @@ process CALC_COVERAGE {
 
 process CALC_COVERAGE_SURVIVOR {
  tag "CALC_COVERAGE VCF on $name using $task.cpus CPUs $task.memory"
- publishDir  "${params.outDir}/${name}/nano/VarCal/survivor/debug", mode:'copy'
+ //publishDir  "${params.outDir}/${name}/nano/VarCal/survivor/debug", mode:'copy'
 
  input:
  tuple val(name), val(sample), path(inputvcf), path(bam), path(bai)
@@ -259,7 +259,7 @@ process PARSE_SVIM_VCF {
 
 process SURVIVOR {
  tag "SURVIVOR VCF on $name using $task.cpus CPUs $task.memory"
- publishDir  "${params.outDir}/${name}/nano/VarCal/survivor", mode:'copy'
+ //publishDir  "${params.outDir}/${name}/nano/VarCal/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:55"
  label "small_process"
 
