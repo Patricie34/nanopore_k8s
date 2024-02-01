@@ -13,6 +13,7 @@ process QUALIMAP {
 
 	script:
 	"""
+	echo QUALIMAP on $name
 	qualimap bamqc -bam ${bam} -nw 5000 -nt 14 --java-mem-size=60G -c -outdir ./qualimap
 	"""
 }

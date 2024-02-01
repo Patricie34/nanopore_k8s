@@ -6,14 +6,13 @@ process GUPPY {
 	label "medium_mem"
 
 	input:
-		val sample
+	val sample
 
 	output:
 	tuple val(sample.name), path("basecalled/pass/*.gz")
-	path '*'
-
+	
 	when:
-		sample.type == 'fast5'
+	sample.type == 'fast5'
 
 	script:
 	"""

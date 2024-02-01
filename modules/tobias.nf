@@ -2,18 +2,17 @@ process DELLY_SVs {
 	tag "DELLY_SVs on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/Delly/SVs/", mode:'copy'
 	container "dellytools/delly:latest"
-
+ label "small_process"
 
 	input:
 	tuple val(name), val(sample), path(bam), path(bai)
-
 
 	output:
 	tuple val(name), val(sample), path("${name}.delly.bcf")
 	
 	script:
 	"""
- 	delly lr -y ont  -o ${name}.delly.bcf -g ${sample.ref} ${bam}
+ delly lr -y ont  -o ${name}.delly.bcf -g ${sample.ref} ${bam}
 	"""
 } 
 
@@ -21,6 +20,7 @@ process DELLY_SVs {
 process DELLY_merge_SVs {
 	tag "DELLY_merge_SVs  using $task.cpus CPUs $task.memory"
 	container "dellytools/delly:latest"
+ label "small_process"
 
 	input:
  path bcfs_filter
@@ -38,6 +38,7 @@ process DELLY_genotype_SVs {
 	tag "DELLY_genotype_SVs on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/Delly/SVs/", mode:'copy'
 	container "dellytools/delly:latest"
+ label "small_process"
 
 	input:
  tuple val(name), val(sample), path(bam), path(bai), path(bcf), path(bcfMerged)
@@ -48,6 +49,51 @@ process DELLY_genotype_SVs {
 	script:
 	""" 
  delly call -g ${sample.ref} -v ${bcfMerged} -o ${name}.geno.bcf -x ${sample.nonMappableRepeats} ${bam}
+	"""
+} 
+
+
+process DELLY_merge_genotyped {
+	tag "DELLY_merge_genotyped using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/Delly/", mode:'copy'
+	container "staphb/bcftools:1.18"
+ label "small_process"
+
+	input:
+ path genotyped_bcfs
+
+	output:
+	path "delly.geno.merged.bcf"
+	
+	script:
+	"""
+	# List of files
+ file_list=($genotyped_bcfs)
+
+ # Loop over files
+ for file in "\${file_list[@]}"; do
+     echo "\$file"
+					bcftools index \$file
+ done
+	bcftools merge -m id -O b -o delly.geno.merged.bcf $genotyped_bcfs
+	"""
+} 
+
+process DELLY_filter_merge_genotyped {
+	tag "DELLY_filter_merge_genotyped using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/Delly/", mode:'copy'
+	container "quay.io/biocontainers/cyvcf2:0.30.25--py38he403ad2_0"
+ label "small_process"
+
+	input:
+ path merged_genotyped_bcfs
+
+	output:
+	path "filtered.geno.merged.tsv"
+	
+	script:
+	"""
+	python $params.FilterSingletons -v $merged_genotyped_bcfs > filtered.geno.merged.tsv
 	"""
 } 
 
@@ -86,7 +132,7 @@ process DELLY_annot_genesBNDs {
 	
 	script:
 	""" 
-	alfred annotate -d 3000 -g /mnt/shared/999993-Bioda/data/ssd_3/references/homsap/GRCh38-p10/annot/Homo_sapiens.GRCh38.107.gtf.gz -o ${name}.sv.gene.tsv ${input_tsv}
+	alfred annotate -d 3000 -g $sample.alfredAnnotateBed -o ${name}.sv.gene.tsv ${input_tsv}
 	"""
 } 
 
@@ -94,6 +140,7 @@ process DELLY_CNVs {
 	tag "DELLY_CNVs on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/Delly/CNVs/", mode:'copy'
 	container "dellytools/delly:latest"
+ label "small_process"
 
 	input:
 	tuple val(name), val(sample), path(bam), path(bai)
@@ -105,8 +152,7 @@ process DELLY_CNVs {
 	script:
 	"""
 	# -m parameter should not be hardcoded
-	delly cnv -w 25000 -i 25000 -j 25000 -a -g ${sample.ref} -m /mnt/shared/MedGen/ONTdata/nanobreak/src/pipeline/project/xsvato01/nanopore_k8s/bin/GrCh38/dna.primary_assembly.fa.r101.s501.NoCHR.blacklist.gz\\
-	 -c ${name}.cov.gz -o ${name}.cnv.bcf ${bam}
+	delly cnv -w 25000 -i 25000 -j 25000 -a -g ${sample.ref} -m ${sample.nonMappableRepeatsTobias} -c ${name}.cov.gz -o ${name}.cnv.bcf ${bam}
 	"""
 }
 
@@ -123,6 +169,6 @@ process DELLY_CNVs {
 	
 	script:
 	"""
-	Rscript /mnt/shared/MedGen/ONTdata/nanobreak/src/pipeline/project/xsvato01/nanopore_k8s/bin/rd.R ${covfile}
+	Rscript ${params.CnvPlotTobias} $covfile
 	"""
 } 

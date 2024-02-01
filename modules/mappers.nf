@@ -11,6 +11,7 @@ process MINIMAP2 {
 
 	script:
 	"""
+	echo MINIMAP2 on $name
 	minimap2 --MD -a -t ${task.cpus} ${sample.ref} $reads > ${name}.sam
 	samtools view -bS ${name}.sam > ${name}.bam
 	samtools sort -o ${name}.sorted.bam ${name}.bam

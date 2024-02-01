@@ -1,4 +1,4 @@
-process SVIM{
+process SVIM {
 	tag "Variant calling using SVIM on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 	label "medium_mem"
@@ -7,15 +7,13 @@ process SVIM{
 	input:
 	tuple val(name), val(sample), path(bam), path(bai)
 
-
 	output:
-	tuple val(name), path ("*")
 	tuple val(name), val(sample), path("${name}.variants.vcf")
 	
 	script:
 	"""
- find /tmp/ -name "*.bam" -exec ls -lh {} \\; >> bamSize.log
-	svim alignment ./ ${bam} ${params.GrCh38ref} --minimum_depth 1 --read_names --all_bnds
+	echo SVIM on ${name}
+	svim alignment ./ ${bam} ${params.GrCh38ref} --minimum_depth 2 --read_names --all_bnds
 	mv variants.vcf ${name}.variants.vcf
 	"""
 } 
@@ -26,10 +24,10 @@ process PEPPER_DEEPVARIANT {
 	tag "Variant calling using PEPPER_DEEPVARIANT on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/DeepVariant/", mode:'copy'
 	accelerator 1, type: 'nvidia.com/gpu'
-	// container "kishwars/pepper_deepvariant:r0.8"
  container "kishwars/pepper_deepvariant:r0.8-gpu"
+	label "medium_mem"
 	label "medium_cpus"
-
+	
  input:
 	tuple val(name), val(sample), path(bam), path(bai)
 
@@ -46,10 +44,9 @@ process PEPPER_DEEPVARIANT {
 	"""
 	echo PEPPER_DEEPVARIANT on ${name}
 	#samtools view -b -f 0x900 -q 10 ${bam} > primary_reads.bam
-	
-	samtools sort -o ${name}.primary.sorted.bam primary_reads.bam
-	samtools index ${name}.primary.sorted.bam ${name}.primary.sorted.bam.bai	
- run_pepper_margin_deepvariant call_variant -b ${name}.primary.sorted.bam -f ${sample.ref} -o ./ -p ${name} -s ${name} -t ${task.cpus} --${model} --phased_output
+	#samtools sort -o ${name}.primary.sorted.bam primary_reads.bam
+	#samtools index ${name}.primary.sorted.bam ${name}.primary.sorted.bam.bai	
+ run_pepper_margin_deepvariant call_variant -b $bam -f ${sample.ref} -o ./ -p ${name} -s ${name} -t ${task.cpus} --${model} --phased_output
 	"""
 } 
 
