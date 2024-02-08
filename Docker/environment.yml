@@ -8,6 +8,7 @@ channels:
   - defaults
 dependencies:
   - minimap2
+  - bcftools
   - samtools
   - survivor
   - svim
