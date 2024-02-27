@@ -18,3 +18,4 @@ dependencies:
   - cyvcf2
   - ensembl-vep
   - scikit-allel
+  - bcftools
