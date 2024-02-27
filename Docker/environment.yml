@@ -8,7 +8,6 @@ channels:
   - defaults
 dependencies:
   - minimap2
-  - bcftools
   - samtools
   - survivor
   - svim
@@ -18,3 +17,4 @@ dependencies:
   - pandas
   - cyvcf2
   - ensembl-vep
+  - scikit-allel

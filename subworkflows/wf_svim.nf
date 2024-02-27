@@ -17,7 +17,7 @@ workflow wf_svim {
 		def filtered  = removeSame(vcf, row[3])
 		[name,sample, vcf, filtered]	
 		})
-		Tagged = TAG_UNIQUE_VARS(Combined_filtered)
+		(Tagged, uniqueIds) = TAG_UNIQUE_VARS(Combined_filtered)
 		Annotated = ANNOTATE(Tagged)
 		//SVIM_Annotated_Sup2 = FILTER_SVIM(Annotated) //already min 2 supplementary reads
 		BAMs_annot = Annotated.join(BAMs).map({
@@ -33,8 +33,20 @@ workflow wf_svim {
 	})//.view{"____________Annotated+Bams_____________: $it"}// join BAMs with annotated, vcf fits bam for given sample
 	CovFiles = CALC_COVERAGE(BAMs_annot)
 	BAMs_annot_cov = BAMs_annot.join(CovFiles)
-	Editedvcfs = PARSE_SVIM_VCF(BAMs_annot_cov) // NOT ALL FINISHED
+	//Editedvcfs = PARSE_SVIM_VCF(BAMs_annot_cov) // NOT ALL FINISHED
 
 	emit:
-	SVIM_Annotated_Sup2
+	SvimRawVcf
+}
+
+//*******************************************************
+/// CUSTOM FILTERING SCRIPTS
+//*******************************************************
+def removeSame(nm,lst) {
+	def list=[]
+ for (int i = 0; i < lst.size(); i++) {
+   if (lst[i] != nm){
+	   list.add(lst[i])}
+   }
+ return(list)
 }

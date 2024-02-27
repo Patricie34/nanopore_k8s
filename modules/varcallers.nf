@@ -1,20 +1,21 @@
 process SVIM {
 	tag "Variant calling using SVIM on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
-	label "medium_mem"
-	label "medium_cpus"
+ container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
+	label "small_cpus"
 
 	input:
 	tuple val(name), val(sample), path(bam), path(bai)
 
 	output:
-	tuple val(name), val(sample), path("${name}.variants.vcf")
+	tuple val(name), val(sample), path("${name}.svim.bcf")
 	
 	script:
 	"""
 	echo SVIM on ${name}
-	svim alignment ./ ${bam} ${params.GrCh38ref} --minimum_depth 2 --read_names --all_bnds
-	mv variants.vcf ${name}.svim.vcf
+	svim alignment ./ ${bam} ${sample.ref} --minimum_depth 2 --read_names --sample ${name}.Sniffles
+	#--all_bnds
+	mv variants.vcf ${name}.svim.bcf
 	"""
 } 
 
@@ -89,6 +90,6 @@ process SNIFFLES2 {
 	script:
 	"""
 	echo sniffles on ${name}
-	sniffles --input ${bam} --reference ${params.GrCh38ref} --tandem-repeats ${sample.nonMappableRepeats} --minsupport 2 --output-rnames -t ${task.cpus} --vcf ${sample.name}.sniffles.vcf 
+	sniffles --input ${bam} --reference ${sample.ref} --tandem-repeats ${sample.nonMappableRepeats} --minsupport 2 --output-rnames -t ${task.cpus} --vcf ${sample.name}.sniffles.vcf 
 	"""
 } 

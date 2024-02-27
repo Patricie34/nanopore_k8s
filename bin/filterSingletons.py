@@ -7,14 +7,17 @@ import cyvcf2
 
 
 # Parse command line
-parser = argparse.ArgumentParser(description='Filter singleton SVs from multi-sample BCF')
-parser.add_argument('-v', '--vcf', metavar='input.vcf.gz', required=True, dest='vcf', help='input VCF file (required)')
+parser = argparse.ArgumentParser(
+    description='Filter singleton SVs from multi-sample BCF')
+parser.add_argument('-v', '--vcf', metavar='input.vcf.gz',
+                    required=True, dest='vcf', help='input VCF file (required)')
 args = parser.parse_args()
 
 # Parse VCF
 vcf = cyvcf2.VCF(args.vcf)
 samples = list(vcf.samples)
-print("chr", "pos", "chr2", "pos2", "id", "svtype", "svlen", "strand", "quality", "support", "carrier", sep="\t")
+print("chr", "pos", "chr2", "pos2", "id", "svtype", "svlen",
+      "strand", "quality", "support", "carrier", sep="\t")
 for record in vcf:
     # Ignore multi-allelics
     if len(record.ALT) > 1:
@@ -49,7 +52,8 @@ for record in vcf:
         if (svtype == "BND"):
             svlen = 0
             alt = record.ALT[0]
-            alt = alt.replace('[','').replace(']','').replace('N','').replace('A','').replace('C','').replace('G','').replace('T','').split(':')
+            alt = alt.replace('[', '').replace(']', '').replace('N', '').replace(
+                'A', '').replace('C', '').replace('G', '').replace('T', '').split(':')
             chr2 = alt[0]
             pos2 = alt[1]
         else:
@@ -59,5 +63,5 @@ for record in vcf:
             continue
         if chr2.endswith("_random"):
             continue
-        print(record.CHROM, record.POS, chr2, pos2, record.ID, svtype, svlen, strand, record.QUAL, support, carrier.pop(), sep='\t')
-        
+        print(record.CHROM, record.POS, chr2, pos2, record.ID, svtype,
+              svlen, strand, record.QUAL, support, carrier.pop(), sep='\t')

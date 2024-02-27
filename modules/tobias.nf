@@ -141,6 +141,8 @@ process DELLY_CNVs {
 	publishDir  "${params.outDir}/${name}/nano/Delly/CNVs/", mode:'copy'
 	container "dellytools/delly:latest"
  label "small_process"
+	label "medium_mem"
+
 
 	input:
 	tuple val(name), val(sample), path(bam), path(bai)
