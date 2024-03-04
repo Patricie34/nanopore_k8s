@@ -14,8 +14,8 @@ include { DORADO } from "${params.projectDirectory}/modules/basecallers"
 
 workflow {
 	///  GATHERING INPUTS
-	Runlist = channel.fromList(samplesheet)
-	References = channel.fromList(reference_sample_specific)
+	Runlist = channel.fromList(params.samplesheet)
+	References = channel.fromList(params.ref_specific)
  
 	BAMs = wf_process_till_bam(Runlist, References)
  Svim_annot_vcfs = wf_svim(BAMs)
