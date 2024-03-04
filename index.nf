@@ -6,6 +6,10 @@ include { wf_svim } from "${params.projectDirectory}/subworkflows/wf_svim"
 include { wf_delly } from "${params.projectDirectory}/subworkflows/wf_delly"
 include { wf_survivor } from "${params.projectDirectory}/subworkflows/wf_survivor"
 
+include { DORADO } from "${params.projectDirectory}/modules/basecallers"
+
+
+
 
 
 workflow {

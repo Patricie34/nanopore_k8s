@@ -3,8 +3,10 @@ process SURVIVOR {
  tag "SURVIVOR VCF on $name using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/${name}/nano/VarCal/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
+	label "s_cpu"
+	label "m_mem"
+
  input:
- // tuple val(name), val(sample), path(vcf1), path(vcf2), path(vcf3)
 	tuple val(name), val(sample), path(vcfs)
 
 
@@ -33,8 +35,8 @@ process SURVIVOR_INFLATE_BNDs {
  tag "SURVIVOR_INFLATE_BNDs using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
- label "small_process"
-	label "medium_mem"
+	label "s_cpu"
+	label "m_mem"
 
  input:
  tuple val(name), val(sample), path(vcf), val(varcaller)
@@ -54,7 +56,8 @@ process APPEND_SUPP_FIELD {
  tag "APPEND_SUPP_FIELD on $name using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/${name}/nano/VarCal/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
- label "small_process"
+	label "s_cpu"
+	label "s_mem"
 
  input:
  tuple val(name), val(sample), path(inputBcf)
@@ -85,8 +88,8 @@ process SURVIVOR_INTERSECT_SAMPLES {
  tag "SURVIVOR_INTERSECT_SAMPLES using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
- label "small_process"
-	label "medium_mem"
+	label "s_cpu"
+	label "m_mem"
 
  input:
   path vcfs
@@ -109,7 +112,8 @@ process SURVIVOR_FILTER_SINGLETONS {
  tag "SURVIVOR_FILTER_SINGLETONS on $name using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/${name}/nano/VarCal/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
-	label "medium_mem"
+	label "s_cpu"
+	label "m_mem"
  
 	input:
  tuple val(name), val(sample), path(samplevcf), path(multibcf)
@@ -120,38 +124,19 @@ process SURVIVOR_FILTER_SINGLETONS {
 
 
  script:
-	// # Iterate over each .vcf file in the current directory
-// for vcf_file in *.vcf; do
-//     # Check if the file is a regular file
-//         # Sort the VCF file
-//         echo "Sorting \$vcf_file..."
-//         bcftools sort -o "\${vcf_file}.sorted.vcf" "\$vcf_file"
-
-//         # Compress the sorted VCF file using bgzip
-//         echo "Compressing \${vcf_file}.sorted.vcf..."
-//         bgzip "\${vcf_file}.sorted.vcf"
-
-//         # Create index file for the compressed VCF file
-//         echo "Creating index for \${vcf_file}.sorted.vcf.gz..."
-//         bcftools index "\${vcf_file}.sorted.vcf.gz"
-// done
-//bcftools merge *.vcf.gz -O b -o merged.bcf
-
  """
-echo SURVIVOR_FILTER_SINGLETONS $name
-bcftools view $samplevcf -O b > sample.bcf
-for bcf_file in *.bcf; do
- echo "Sorting \$bcf_file..."
- bcftools sort -o "\${bcf_file}.sorted.bcf" "\$bcf_file"
-	echo "Indexing \$\${bcf_file}.sorted.bcf..."
- bcftools index "\${bcf_file}.sorted.bcf"
-done
+ echo SURVIVOR_FILTER_SINGLETONS $name
+ bcftools view $samplevcf -O b > sample.bcf
+ for bcf_file in *.bcf; do
+  echo "Sorting \$bcf_file..."
+  bcftools sort -o "\${bcf_file}.sorted.bcf" "\$bcf_file"
+		echo "Indexing \$\${bcf_file}.sorted.bcf..."
+  bcftools index "\${bcf_file}.sorted.bcf"
+ done
 
-bcftools merge *.sorted.bcf -O b -o merged.bcf
-python /mnt/shared/MedGen/ONTdata/nanobreak/src/pipeline/project/xsvato01/nanopore_k8s/bin/filterSingletonsSurvivor.py -v merged.bcf -n $name -o ${name}.SURVIVOR.singletons.vcf
-bcftools view --samples ${name} -O b ${name}.SURVIVOR.singletons.vcf > ${name}.SURVIVOR.singletons.bcf
-# Clean up
-rm *.vcf*
+ bcftools merge *.sorted.bcf -O b -o merged.bcf
+ python /mnt/shared/MedGen/ONTdata/nanobreak/src/pipeline/project/xsvato01/nanopore_k8s/bin/filterSingletonsSurvivor.py -v merged.bcf -n $name -o ${name}.SURVIVOR.singletons.vcf
+ bcftools view --samples ${name} -O b ${name}.SURVIVOR.singletons.vcf > ${name}.SURVIVOR.singletons.bcf
  """
 } 
 
@@ -160,8 +145,7 @@ process ANNOTATE_SURVIROR {
 	tag "ANNOTATE_SURVIROR on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/survivor", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/btk_k8s:25"
- // label "big_mem"
- memory '128 GB'
+
 
 	input:
  tuple val(name),val(sample), path(vcf)
@@ -184,7 +168,8 @@ process CALC_COVERAGE_SURVIVOR {
  tag "CALC_COVERAGE VCF on $name using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/${name}/nano/VarCal/survivor/debug", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
-	debug true
+	label "s_cpu"
+	label "m_mem"
 
  input:
  tuple val(name), val(sample), path(inputvcf), path(bam), path(bai)
@@ -209,7 +194,8 @@ process PARSE_SURVIVOR {
  tag "PARSE_SURVIVOR VCF on $name using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/${name}/nano/VarCal/survivor/", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
-	debug true
+	label "s_cpu"
+	label "s_mem"
 
  input:
  tuple val(name), val(sample), path(inputvcf), path(covfile)
@@ -222,5 +208,4 @@ process PARSE_SURVIVOR {
  echo PARSE_SURVIVOR $name
  python ${params.ParseSurvivor} -v $inputvcf -c $covfile -o ${name}.survivor.tsv
  """
-} 
-
+}

@@ -19,3 +19,4 @@ dependencies:
   - ensembl-vep
   - scikit-allel
   - bcftools
+  - jannessp::pod5

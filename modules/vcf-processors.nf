@@ -1,8 +1,8 @@
 process TAG_UNIQUE_VARS {
 	tag "Tagging unique vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
-	label "small_cpus"
-	label "big_mem"
+	label "s_cpu"
+	label "xxl_mem"
 
 	input:
  tuple val(name), val(sample), path(vcf), path(vcf_filter_with)
@@ -23,7 +23,8 @@ process TAG_UNIQUE_VARS {
 process BCF2TVC {
 	tag "Annotating vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
- label "small_process"
+	label "s_cpu"
+	label "s_mem"
 
 	input:
  tuple val(name),val(sample), path(bcf)
@@ -41,7 +42,8 @@ process ANNOTATE {
 	tag "Annotating vcf vars on $name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
 	container "ensemblorg/ensembl-vep:release_110.1"
-	label "big_mem"
+	label "m_cpu"
+	label "m_mem"
 
 	input:
 	tuple val(name),val(sample), path(vcf)
@@ -58,8 +60,8 @@ process ANNOTATE {
 
 process FILTER_SVIM {
 	tag "FILTER_SVIM vcf vars on $name using $task.cpus CPUs $task.memory"
-	//publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
- label "small_process"
+	label "s_cpu"
+	label "s_mem"
 
 	input:
 	tuple val(name),val(sample), path(vcf)
@@ -79,8 +81,8 @@ process PEPPER_PREFILT {
 	tag "PEPPER_PREFILT on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/mapped/pepper_prefilt", mode:'copy'
 	container "quay.io/biocontainers/sambamba:1.0--h98b6b92_0"
- label "small_cpus"
-	label "medium_mem"
+	label "s_cpu"
+	label "m_mem"
 
  input:
 	tuple val(name), val(sample), path(bam), path(bai)
@@ -105,7 +107,8 @@ process PEPPER_UMIREADS {
 	tag "PEPPER_UMIREADS on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${name}/nano/mapped/pepper_prefilt", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/qc_cmbg:26"
- label "small_process"
+	label "s_cpu"
+	label "s_mem"
 
  input:
 	tuple val(name), val(sample), path(bam), path(bai)
@@ -159,6 +162,8 @@ process PHASE_WHATSHAP {
 process CALC_COVERAGE {
  tag "CALC_COVERAGE VCF on $name using $task.cpus CPUs $task.memory"
  //publishDir "${params.outDir}/${name}/nano/VarCal/debug", mode:'copy'
+	label "s_cpu"
+	label "l_mem"
 
  input:
  tuple val(name), val(sample), path(inputvcf), path(bam), path(bai)
@@ -189,7 +194,8 @@ process CALC_COVERAGE {
 process PARSE_SVIM_VCF {
  tag "PARSE_SVIM_VCF VCF on $name using $task.cpus CPUs $task.memory"
  publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
- label "small_process"
+	label "s_cpu"
+	label "m_mem"
 
  input:
  tuple val(name), val(sample), path(inputvcf), path(bam), path(bai), path(covFile)

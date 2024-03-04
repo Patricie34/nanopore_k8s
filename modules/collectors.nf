@@ -1,6 +1,7 @@
 process COLLECT_FQs {
  tag "Collecting Fastq on $sample.name using $task.cpus CPUs $task.memory"
-	label "small_process"
+	label "s_cpu"
+	label "s_mem"
 
 	input:
 	val sample
@@ -21,8 +22,9 @@ process COLLECT_FQs {
 
 process COLLECT_BAMs {
 	tag "Collecting bam on $sample.name using $task.cpus CPUs $task.memory"
-	label "small_process"
-
+	label "s_cpu"
+	label "s_mem"
+	
 	input:
 	tuple val(name), val(sample)
 

@@ -1,6 +1,7 @@
 process REFORMAT_SAMPLE {
  tag "Reformating $sample.name using $task.cpus CPUs $task.memory"
- label "small_process"
+	label "s_cpu"
+	label "s_mem"
 
  input:
  val sample
@@ -14,8 +15,9 @@ process REFORMAT_SAMPLE {
 
 process REFORMAT_PARAMS {
  tag "Reformating $references.refname using $task.cpus CPUs $task.memory"
- label "small_process"
-
+	label "s_cpu"
+	label "s_mem"
+ 
  input:
  val references
 

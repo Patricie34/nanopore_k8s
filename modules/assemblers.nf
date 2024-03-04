@@ -2,7 +2,6 @@
 process FLYE {
 	container 'staphb/flye'
 	publishDir  "${params.outDir}/${name}/nano/", mode:'copy'
-	label "big_mem"
 
 	input:
 	tuple val(name), path (fastq)
@@ -41,8 +40,6 @@ process ASSEMBLY_PREFILTER {
 
 process SHASTA {
 	publishDir  "${params.outDir}/${name}/nano/SHASTA/", mode:'copy'
-	// label "biggest_mem"
-	//label "big_cpus"
 	tag "Shasta on $name using $task.cpus CPUs $task.memory"
 
 	input:
@@ -73,7 +70,6 @@ process MUMMER {
  container 'staphb/mummer'
 	//container 'quay.io/biocontainers/mummer'
 	publishDir  "${params.outDir}/${name}/nano/Dnadiff", mode:'copy'
-	label "biggest_mem"
 	tag "Mummer on $name using $task.cpus CPUs $task.memory"
 
 	input:
