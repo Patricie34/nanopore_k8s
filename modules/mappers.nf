@@ -8,13 +8,30 @@ process MINIMAP2 {
 	tuple val(name), path(reads), val(sample)
 
 	output:
-	tuple val(sample.name), val(sample), path("${name}.sorted.bam"), path("${name}.sorted.bam.bai")
+	tuple val(sample.name), val(sample), path("${name}.bam")
 
 	script:
 	"""
 	echo MINIMAP2 on $name
 	minimap2 --MD -a -t ${task.cpus} ${sample.ref} $reads > ${name}.sam
 	samtools view -bS ${name}.sam > ${name}.bam
+	"""
+}
+
+process BAM_INDEX_SORT {
+	tag "Mapping on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${sample.name}/nano/mapped/", mode:'copy'
+	label "m_mem"
+
+	input:
+	tuple val(name), path(reads), val(sample)
+
+	output:
+	tuple val(sample.name), val(sample), path("${name}.sorted.bam"), path("${name}.sorted.bam.bai")
+
+	script:
+	"""
+	echo BAM_INDEX_SORT on $name
 	samtools sort -o ${name}.sorted.bam ${name}.bam
 	samtools index ${name}.sorted.bam ${name}.sorted.bam.bai	
 	"""
