@@ -20,7 +20,7 @@ workflow {
 	BAMs = wf_process_till_bam(Runlist, References)
  Svim_annot_vcfs = wf_svim(BAMs)
 	wf_delly(BAMs)
-	wf_survivor(BAMs, Svim_annot_vcfs)
+	wf_survivor(BAMs, Svim_vcfs, Delly_vcfs)
  
 
 
