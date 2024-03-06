@@ -1,6 +1,5 @@
 process COLLECT_FQs {
  tag "Collecting Fastq on $sample.name using $task.cpus CPUs $task.memory"
-	container 'servercontainers/rsync:3.1.3'
 	label "s_cpu"
 	label "s_mem"
 
@@ -23,7 +22,6 @@ process COLLECT_FQs {
 
 process COLLECT_BAMs {
 	tag "Collecting bam on $sample.name using $task.cpus CPUs $task.memory"
-	container 'servercontainers/rsync:3.1.3'
 	label "s_cpu"
 	label "s_mem"
 	
@@ -39,6 +37,6 @@ process COLLECT_BAMs {
 	script:
 	"""
 	echo Collecting bams for $sample.name
- find ${sample.path} -type f -name '*.ba*' | xargs -I % rsync --progress % .
+ find ${sample.path} -type f -name "${sample.name}.sorted.ba*" | xargs -I % rsync --progress % .
 	"""
 } 

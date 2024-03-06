@@ -28,7 +28,7 @@ process DORADO {
  container 'ontresearch/dorado:sha087b7b8d8fc047f531926ba064c2f2503fe9a25a'
 	accelerator 1, type: "${sample.gpu}"
 	label "xl_cpu"
-	label "xxl_mem"
+	label "xxxl_mem"
 
 	input:
 	tuple val(name), val(sample)
@@ -71,6 +71,6 @@ fi
 	dorado download --model \$model
 	
 	echo basecalling...
-	dorado basecaller \$model ${sample.path} --reference ${sample.ref} --recursive > ${sample.name}.dorado.bam
+	dorado basecaller \$model ${sample.path} --reference ${sample.ref} --verbose --recursive > ${sample.name}.dorado.bam
 	"""
 }
