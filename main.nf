@@ -6,21 +6,18 @@ include { wf_svim } from "${params.projectDirectory}/subworkflows/wf_svim"
 include { wf_delly } from "${params.projectDirectory}/subworkflows/wf_delly"
 include { wf_survivor } from "${params.projectDirectory}/subworkflows/wf_survivor"
 
-include { DORADO } from "${params.projectDirectory}/modules/basecallers"
-
-
-
-
 
 workflow {
 	///  GATHERING INPUTS
 	Runlist = channel.fromList(params.samplesheet)
 	References = channel.fromList(params.ref_specific)
- 
+
+
 	BAMs = wf_process_till_bam(Runlist, References)
- Svim_annot_vcfs = wf_svim(BAMs)
-	wf_delly(BAMs)
-	wf_survivor(BAMs, Svim_vcfs, Delly_vcfs)
+ // Svim_annot_vcfs = wf_svim(BAMs)
+	// Delly_vcfs = wf_delly(BAMs)
+	// wf_survivor(BAMs, Svim_annot_vcfs, Delly_vcfs)
+	// CNVkit(BAMs)
  
 
 

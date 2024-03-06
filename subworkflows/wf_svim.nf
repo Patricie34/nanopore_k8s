@@ -6,7 +6,7 @@ workflow wf_svim {
  BAMs
 
 	main:
-	SvimRawVcf = SVIM(BAMs)
+	(SvimRawVcf, _) = SVIM(BAMs)
 	Vcf_paths = SvimRawVcf.map({it -> [it[2]]})
 	Combined_collected_vcf = SvimRawVcf.combine(Vcf_paths.collect().map({it -> [it]}))
 	Combined_filtered = Combined_collected_vcf.map({

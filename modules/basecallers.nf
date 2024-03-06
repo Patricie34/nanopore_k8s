@@ -23,17 +23,15 @@ process GUPPY {
 
 
 process DORADO {
-	tag "DORADO on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${sample.name}/nano/mapped", mode:'copy'
+	tag "DORADO on $sample.name using $task.cpus CPUs $task.memory and GPU $sample.gpu"
+	// publishDir  "${params.outDir}/${sample.name}/nano/mapped", mode:'copy'
  container 'ontresearch/dorado:sha087b7b8d8fc047f531926ba064c2f2503fe9a25a'
-	accelerator 1, type: 'nvidia.com/mig-1g.10gb'
-	//'nvidia.com/gpu'
-	label "l_cpu"
-	label "l_mem"
-	debug true
+	accelerator 1, type: "${sample.gpu}"
+	label "xl_cpu"
+	label "xxl_mem"
 
 	input:
-	val sample
+	tuple val(name), val(sample)
 
 	output:
 	tuple val(sample.name), path("${sample.name}.dorado.bam")
@@ -45,20 +43,34 @@ process DORADO {
 	"""
 	echo DORADO on $sample.name
 	# Conditional block to set model based on the value of var
-	if [[ ${sample.config} == "sup" ]]; then
-					model="dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
-	elif [[ ${sample.config} == "hac" ]]; then
-					model="dna_r10.4.1_e8.2_400bps_hac@v4.3.0"
-	else
-					echo "Unknown value for model"
-					exit
-	fi
- echo "Model: \$model"
+if [[ ${sample.basecall_qual} == "sup" ]]; then
+    if [[ ${sample.chemistry} == "v10" ]]; then
+        model="dna_r9.4.1_e8_sup@v3.6"
+    elif [[ ${sample.chemistry} == "v14" ]]; then
+        model="dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
+    else
+        echo "Unknown value for chemistry"
+        exit
+    fi
+elif [[ ${sample.basecall_qual} == "hac" ]]; then
+    if [[ ${sample.chemistry} == "v10" ]]; then
+        model="dna_r9.4.1_e8_hac@v3.3"
+    elif [[ ${sample.chemistry} == "v14" ]]; then
+        model="dna_r10.4.1_e8.2_400bps_hac@v4.3.0"
+    else
+        echo "Unknown value for chemistry"
+        exit
+    fi
+else
+    echo "Unknown value for model"
+    exit
+fi
 
+ echo "Model: \$model"
 	echo downloading model..
 	dorado download --model \$model
 	
 	echo basecalling...
 	dorado basecaller \$model ${sample.path} --reference ${sample.ref} --recursive > ${sample.name}.dorado.bam
-		"""
+	"""
 }

@@ -1,6 +1,6 @@
 process SVIM {
 	tag "Variant calling using SVIM on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/svim", mode:'copy'
  container "registry.gitlab.ics.muni.cz:443/450402/nanopore_k8s:58"
 	label "s_cpu"
 	label "m_mem"
@@ -10,6 +10,7 @@ process SVIM {
 
 	output:
 	tuple val(name), val(sample), path("${name}.svim.bcf")
+	path "*"
 	
 	script:
 	"""
@@ -77,7 +78,7 @@ process DEEPVARIANT {
 
 process SNIFFLES2 {
 	tag "SNIFFLES2 on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+	publishDir  "${params.outDir}/${name}/nano/VarCal/sniffles", mode:'copy'
 	container 'quay.io/biocontainers/sniffles:2.2--pyhdfd78af_0'
 	label "m_cpu"
 	label "m_mem"

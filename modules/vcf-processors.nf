@@ -22,7 +22,7 @@ process TAG_UNIQUE_VARS {
 
 process BCF2TVC {
 	tag "Annotating vcf vars on $name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
+	// publishDir  "${params.outDir}/${name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	label "s_cpu"
 	label "s_mem"
 
@@ -193,7 +193,7 @@ process CALC_COVERAGE {
 
 process PARSE_SVIM_VCF {
  tag "PARSE_SVIM_VCF VCF on $name using $task.cpus CPUs $task.memory"
- publishDir  "${params.outDir}/${name}/nano/VarCal/", mode:'copy'
+ publishDir  "${params.outDir}/${name}/nano/VarCal/svim", mode:'copy'
 	label "s_cpu"
 	label "m_mem"
 

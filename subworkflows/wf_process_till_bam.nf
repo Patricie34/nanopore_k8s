@@ -15,14 +15,16 @@ workflow wf_process_till_bam {
 	ReferencesReformated = REFORMAT_PARAMS(References)
 	SamplesWithReferences = SamplesReformated.combine(ReferencesReformated,by:1) //match parameters to individual samples
 		.map({ sample -> [sample[1],sample[2]+(sample[3]) ]})
+
 /// CALLING, MAPPING
 	//FQcalled = GUPPY(Runlist)
-	BAMdorado = DORADO(Runlist)
+	BAMdorado = DORADO(SamplesWithReferences)
 	FQcollected = COLLECT_FQs(Runlist)
 	BAMminimap2	= MINIMAP2(FQcollected.join(SamplesWithReferences))
 	BAMSorted = BAM_INDEX_SORT(BAMminimap2.mix(BAMdorado))
 	BAMcollectedSorted = COLLECT_BAMs(SamplesWithReferences)
-	BAMs = BAMcollected.mix(BAMSorted)
+	BAMs = BAMcollectedSorted.mix(BAMSorted)
+
 
 	emit:
 	BAMs
