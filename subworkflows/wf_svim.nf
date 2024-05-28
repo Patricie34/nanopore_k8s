@@ -1,5 +1,5 @@
 include { SVIM } from "${params.projectDirectory}/modules/varcallers"
-include {TAG_UNIQUE_VARS; ANNOTATE; PARSE_SVIM_VCF; CALC_COVERAGE; FILTER_SVIM} from "${params.projectDirectory}/modules/vcf-processors"
+include { TAG_UNIQUE_VARS; ANNOTATE; PARSE_SVIM_VCF; CALC_COVERAGE; FILTER_SVIM } from "${params.projectDirectory}/modules/vcf-processors"
 
 workflow wf_svim {
  take:
@@ -33,7 +33,7 @@ workflow wf_svim {
 	})//.view{"____________Annotated+Bams_____________: $it"}// join BAMs with annotated, vcf fits bam for given sample
 	CovFiles = CALC_COVERAGE(BAMs_annot)
 	BAMs_annot_cov = BAMs_annot.join(CovFiles)
-	//Editedvcfs = PARSE_SVIM_VCF(BAMs_annot_cov) // NOT ALL FINISHED
+	Editedvcfs = PARSE_SVIM_VCF(BAMs_annot_cov) // NOT ALL FINISHED
 
 	emit:
 	SvimRawVcf
