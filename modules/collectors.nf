@@ -1,5 +1,5 @@
 process COLLECT_FQs {
- tag "Collecting Fastq on $sample.name using $task.cpus CPUs $task.memory"
+	tag "Collecting Fastq on $sample.name using $task.cpus CPUs $task.memory"
 	label "s_cpu"
 	label "s_mem"
 
@@ -16,7 +16,7 @@ process COLLECT_FQs {
 	"""
 	echo Collecting fastqs for $sample.name
 	mkdir -p basecalled/pass/
- find ${sample.path} -type f -name '*.fastq.gz' | xargs -I % rsync --progress % ./basecalled/pass/
+	find ${sample.path} -type f -name '*.fastq.gz' | xargs -I % rsync --progress % ./basecalled/pass/
 	"""
 } 
 
@@ -29,7 +29,7 @@ process COLLECT_BAMs {
 	tuple val(name), val(sample)
 
 	output:
-	tuple val(sample.name), val(sample), path("${sample.name}.sorted.bam"), path("${sample.name}.sorted.bam.bai")
+	tuple val(sample.name), val(sample), path("${sample.name}.remapped.sorted.bam"), path("${sample.name}.remapped.sorted.bam.bai")
 	
 	when:
 	sample.type == 'bam'
@@ -37,6 +37,6 @@ process COLLECT_BAMs {
 	script:
 	"""
 	echo Collecting bams for $sample.name
- find ${sample.path} -type f -name "${sample.name}.sorted.ba*" | xargs -I % rsync --progress % .
+	find ${sample.path} -type f -name "${sample.name}.remapped.sorted.ba*" | xargs -I % rsync --progress % .
 	"""
 } 

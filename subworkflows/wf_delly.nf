@@ -38,7 +38,7 @@ workflow wf_delly {
 			def bam  = row[5]
 			def bai  = row[6]
 			[name, sample, bam, bai, vcf,mergedVcf ]	
-	})//.view{"____________Delly_BC_paths_bams_____________: $it"}
+	})
 	Delly_genotyped = DELLY_genotype_SVs(Delly_SVs_combined)
 	Delly_genotyped_renamed = DELLY_rename_BCFs(Delly_genotyped)
 	Delly_genotyped_paths = Delly_genotyped_renamed.map({it -> [it[2]]})

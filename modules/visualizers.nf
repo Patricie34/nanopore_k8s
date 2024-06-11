@@ -4,7 +4,7 @@ process CIRCOS{
 	publishDir  "${params.outDir}/${name}/nano/Circos/", mode:'copy'
 
 	input:
-	tuple val(name),	path(vcfs), path(cnv_sorted),	path(vars_edited)
+	tuple val(name), path(vcfs), path(cnv_sorted), path(vars_edited)
 
 	output:
 	path("*.html")

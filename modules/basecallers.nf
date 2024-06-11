@@ -1,3 +1,29 @@
+process FAST5TOPOD5 {
+	tag "FAST5TOPOD5 on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${sample.name}/nano/pod5", mode:'copy'
+	label "s_cpu"
+	label "l_mem"
+
+	input:
+	tuple val(name), val(sample)
+
+	output:
+	tuple val(sample.name), val(sample), path("pod5s/*")
+	
+	when:
+	sample.type == 'fast5'
+
+	script:
+	"""
+	echo FAST5TOPOD5 on $sample.name
+	pip install pod5
+	mkdir fast5
+	find ${sample.path} -type f -name '*.fast5' | xargs -I % rsync --progress % /tmp/fast5/
+	ls -alh /tmp/fast5/*.fast5
+	pod5 convert fast5 /tmp/fast5/*.fast5 --output ./pod5s/ --one-to-one /tmp/fast5/
+	"""
+} 
+
 process GUPPY {
 	tag "Basecalling on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir  "${params.outDir}/${sample.name}/nano/", mode:'copy'
@@ -13,7 +39,7 @@ process GUPPY {
 	tuple val(sample.name), path("basecalled/pass/*.gz")
 	
 	when:
-	sample.type == 'fast5'
+	sample.type == 'pod5' // CHECK THIS
 
 	script:
 	"""
@@ -24,8 +50,8 @@ process GUPPY {
 
 process DORADO {
 	tag "DORADO on $sample.name using $task.cpus CPUs $task.memory and GPU $sample.gpu"
-	// publishDir  "${params.outDir}/${sample.name}/nano/mapped", mode:'copy'
- container 'ontresearch/dorado:sha087b7b8d8fc047f531926ba064c2f2503fe9a25a'
+	publishDir  "${params.outDir}/${sample.name}/nano/mapped", mode:'copy'
+	container 'ontresearch/dorado:sha087b7b8d8fc047f531926ba064c2f2503fe9a25a'
 	accelerator 1, type: "${sample.gpu}"
 	label "xl_cpu"
 	label "xxxl_mem"
@@ -34,7 +60,7 @@ process DORADO {
 	tuple val(name), val(sample)
 
 	output:
-	tuple val(sample.name), path("${sample.name}.dorado.bam")
+	tuple val(name), val(sample), path("${sample.name}.dorado.bam")
 	
 	when:
 	sample.type == 'raw'
@@ -43,30 +69,29 @@ process DORADO {
 	"""
 	echo DORADO on $sample.name
 	# Conditional block to set model based on the value of var
-if [[ ${sample.basecall_qual} == "sup" ]]; then
-    if [[ ${sample.chemistry} == "v10" ]]; then
-        model="dna_r9.4.1_e8_sup@v3.6"
-    elif [[ ${sample.chemistry} == "v14" ]]; then
-        model="dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
-    else
-        echo "Unknown value for chemistry"
-        exit
-    fi
-elif [[ ${sample.basecall_qual} == "hac" ]]; then
-    if [[ ${sample.chemistry} == "v10" ]]; then
-        model="dna_r9.4.1_e8_hac@v3.3"
-    elif [[ ${sample.chemistry} == "v14" ]]; then
-        model="dna_r10.4.1_e8.2_400bps_hac@v4.3.0"
-    else
-        echo "Unknown value for chemistry"
-        exit
-    fi
-else
-    echo "Unknown value for model"
-    exit
-fi
-
- echo "Model: \$model"
+	if [[ ${sample.basecall_qual} == "sup" ]]; then
+    	if [[ ${sample.chemistry} == "v10" ]]; then
+        	model="dna_r9.4.1_e8_sup@v3.6"
+		elif [[ ${sample.chemistry} == "v14" ]]; then
+        	model="dna_r10.4.1_e8.2_400bps_sup@v4.3.0"
+    	else
+        	echo "Unknown value for chemistry"
+       		exit
+    	fi
+	elif [[ ${sample.basecall_qual} == "hac" ]]; then
+   	if [[ ${sample.chemistry} == "v10" ]]; then
+    	    model="dna_r9.4.1_e8_hac@v3.3"
+    	elif [[ ${sample.chemistry} == "v14" ]]; then
+        	model="dna_r10.4.1_e8.2_400bps_hac@v4.3.0"
+    	else
+        	echo "Unknown value for chemistry"
+        	exit
+    	fi
+	else
+    	echo "Unknown value for model"
+    	exit
+	fi
+	echo "Model: \$model"
 	echo downloading model..
 	dorado download --model \$model
 	
