@@ -10,13 +10,25 @@ workflow wf_process_till_bam {
 	References
 
 	main:
-	SamplesReformated = REFORMAT_SAMPLE(Runlist)
-	ReferencesReformated = REFORMAT_PARAMS(References)
+	SamplesReformated = Runlist.map {[it.name, it.reference, it]}
+	ReferencesReformated = References.map {[it, it.refname]}
+
 	SamplesWithReferences = SamplesReformated.combine(ReferencesReformated,by:1) //match parameters to individual samples
 		.map({ sample -> [sample[1],sample[2]+(sample[3]) ]})
 
+// SamplesWithReferences.view()
 
-	BAMcollectedSorted = COLLECT_BAMs(SamplesWithReferences)
+	BAMcollectedSorted = SamplesWithReferences.map { row ->
+			if (row[1].type == 'bam') {
+
+        return [row[0], row[1],
+            file("${row[1].path}/${row[0]}.remapped.sorted.bam", checkIfExists: true),
+            file("${row[1].path}/${row[0]}.remapped.sorted.bam.bai", checkIfExists: true)
+		]
+    }
+	}
+
+	// BAMcollectedSorted = COLLECT_BAMs(SamplesWithReferences)
 	// extractedFQs = BAM2FASTQ(BAMcollectedSorted)
 
 	Pod5s = FAST5TOPOD5(SamplesWithReferences)//.view{"____________Pod5s_____________: $it"}
@@ -25,11 +37,9 @@ workflow wf_process_till_bam {
 	BAMminimap2	= MINIMAP2(FQcollected.join(SamplesWithReferences))
 		// BAMminimap2	= MINIMAP2(extractedFQs.mix(FQcollected.join(SamplesWithReferences)))
 
-	BAMSorted = BAM_INDEX_SORT(BAMminimap2.mix(BAMdorado))
+	BAMSorted = BAM_INDEX_SORT(BAMminimap2.mix(BAMdorado))//.view{"____________Sorted_____________: $it"}
 
-	BAMs = BAMcollectedSorted.mix(BAMSorted) //COMMENTED OUT TO MAKE DORADO INDEPENDENT
-
-	// BAMs = BAMSorted
+	BAMs = BAMcollectedSorted.mix(BAMSorted)//.view{"____________BAM_____________: $it"} //COMMENTED OUT TO MAKE DORADO INDEPENDENT
 
 
 	emit:

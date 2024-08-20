@@ -12,11 +12,11 @@ dependencies:
   - survivor
   - svim
   - pysam
+  - shasta
   - bedtools
   - pandas
   - cyvcf2
   - ensembl-vep
   - scikit-allel
   - bcftools
-  - rsync
   - jannessp::pod5

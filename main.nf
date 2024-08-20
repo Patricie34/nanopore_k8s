@@ -18,7 +18,7 @@ workflow {
 	// Delly_vcfs = 
 	wf_delly(BAMs)
 	// wf_survivor(BAMs, Svim_annot_vcfs, Delly_vcfs)
-	CNVkit(BAMs)
+	// CNVkit(BAMs)
 	QUALIMAP(BAMs)
 
 }

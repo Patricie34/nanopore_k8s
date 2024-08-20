@@ -21,7 +21,7 @@ process CNVkit {
 
 	#cnvkit.py segment ${name}.cnr -p $task.cpus -m hmm -o ${name}.cns
 
-	cnvkit.py scatter -s ${name}.cn{s,r} --y-max=3 --y-min=-3 -o ${name}.scatter.pdf
+	cnvkit.py scatter -s ${name}.cn{s,r} --y-max=4 --y-min=-4 -o ${name}.scatter.pdf
 	for Chr in '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '20' '21' '22' 'X' 'Y'
 		do
     	echo "\$Chr"

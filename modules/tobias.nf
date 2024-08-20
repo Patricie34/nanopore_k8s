@@ -192,7 +192,7 @@ process DELLY_merge_genotyped {
 
 process SANSA_FILTER_1000G {
 	tag "SANSA_FILTER_1000G on $sample.name using $task.cpus CPUs $task.memory"
-	// publishDir  "${params.outDir}/${sample.name}/nano/VarCal/Delly/SVs/", mode:'copy'
+	publishDir  "${params.outDir}/${sample.name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	container "dellytools/sansa:v0.2.1"
 	label "s_cpu"
 	label "xl_mem"
@@ -211,11 +211,53 @@ process SANSA_FILTER_1000G {
 	"""
 } 
 
+
+process SANSA_GET_AFFECTED_GENES {
+	tag "DELLY_annot_genesBNDs on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${sample.name}/nano/VarCal/Delly/SVs/", mode:'copy'
+	container "dellytools/sansa:v0.2.1"
+	label "s_cpu"
+	label "s_mem"
+
+	input:
+	tuple val(sample), path(bcf), path(csi)
+
+	output:
+	tuple val(sample), path("${sample.name}.GenesBreaks.tsv")
+	
+	script:
+	""" 
+	sansa annotate -i Name -g /mnt/shared_resources/homo_sapiens/GRCh38/annot/Homo_sapiens.GRCh38.112.gff3.gz $bcf
+	gzip -d query.tsv.gz
+	mv query.tsv ${sample.name}.GenesBreaks.tsv
+	"""
+} 
+
+process FILTER_GENES_1000G {
+	tag "FILTER_GENES_1000G on $sample.name using $task.cpus CPUs $task.memory"
+	publishDir  "${params.outDir}/${sample.name}/nano/VarCal/Delly/SVs/", mode:'copy'
+	label "s_cpu"
+	label "s_mem"
+
+
+	input:
+	tuple val(sample), path(geneBreaksTsv), path(filteredGenomesTsv)
+
+	output:
+	tuple val(sample), path("${sample.name}.filtered.geneBreaks.tsv")
+	
+	script:
+	""" 
+	python $params.FilterGeneBreaks --geneBreaks $geneBreaksTsv --filteredGenomes $filteredGenomesTsv > ${sample.name}.filtered.geneBreaks.tsv
+	"""
+} 
+
 process PARSE_SANSA {
 	tag "PARSE_SANSA on $sample.name using $task.cpus CPUs $task.memory"
 	publishDir "${params.outDir}/${sample.name}/nano/VarCal/Delly/SVs/", mode:'copy'
 	label "s_cpu"
 	label "s_mem"
+	cache false
 
 	input:
 	tuple val(sample), path(bcf), path(csi), path(tsv)

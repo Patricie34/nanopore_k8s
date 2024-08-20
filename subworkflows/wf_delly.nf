@@ -15,6 +15,8 @@ include {
 	DELLY_rename_BCFs;
 	VCFsPerSample;
 	PARSE_SANSA;
+	FILTER_GENES_1000G;
+	SANSA_GET_AFFECTED_GENES
 	} from  "${params.projectDirectory}/modules/tobias"
 
 workflow wf_delly {
@@ -35,10 +37,12 @@ workflow wf_delly {
 			def sample = row[1]
 			def vcf = row[2]
 			def mergedVcf = row[3]
-			def bam  = row[5]
-			def bai  = row[6]
+			def mergedVcfCsi = row[4]
+			def bam  = row[6]
+			def bai  = row[7]
 			[name, sample, bam, bai, vcf,mergedVcf ]	
 	})
+	// Delly_SVs_combined.view()
 	Delly_genotyped = DELLY_genotype_SVs(Delly_SVs_combined)
 	Delly_genotyped_renamed = DELLY_rename_BCFs(Delly_genotyped)
 	Delly_genotyped_paths = Delly_genotyped_renamed.map({it -> [it[2]]})
@@ -47,8 +51,13 @@ workflow wf_delly {
 	Indexed_merged = INDEX_POP(Delly_merged_genotyped)
 	MarkDup_Pop_Bcf = SANSA_MARKDUP(Indexed_merged)
 	MarkDupBcfs = VCFsPerSample(Delly_SVs_combined.map{ [it[1]]}.combine(MarkDup_Pop_Bcf))//Parse multiBcf to sample-vcfs
+
+MarkDupBcfs.view()
+	geneBreaks = SANSA_GET_AFFECTED_GENES(MarkDupBcfs)
 	SansaTsvs = SANSA_FILTER_1000G(MarkDupBcfs)
-	PARSE_SANSA(MarkDupBcfs.join(SansaTsvs))
+	parsedSansa = PARSE_SANSA(MarkDupBcfs.join(SansaTsvs))
+	FILTER_GENES_1000G(geneBreaks.join(parsedSansa))
+
 
 	// emit:
 	// Delly_SVs

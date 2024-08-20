@@ -1,6 +1,6 @@
 process MINIMAP2 {
 	tag "Mapping on $sample.name using $task.cpus CPUs $task.memory"
-	publishDir  "${params.outDir}/${sample.name}/nano/mapped/", mode:'copy'
+	// publishDir  "${params.outDir}/${sample.name}/nano/mapped/", mode:'copy'
 	label "xl_cpu"
 	label "xxl_mem"
 

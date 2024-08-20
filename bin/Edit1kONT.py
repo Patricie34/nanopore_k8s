@@ -24,7 +24,8 @@ def flatten_nested_dict(d):
     return flattened_dict
 
 
-vcf = allel.read_vcf(args.vcf, fields=["ID", "ALT"])
+vcf = allel.read_vcf(args.vcf,
+                     fields=["ID", "CHROM", "POS", "ALT", "RV", "RR"])
 flattened = flatten_nested_dict(vcf)
 callset_pd = pd.DataFrame(flattened)
 
@@ -34,10 +35,18 @@ merged_df = pd.merge(tsv_pd, callset_pd,
                      right_on='variants/ID',
                      left_on="ID",
                      how='left')
-print("id", "chr", "pos", "chr2", "pos2",
+print("id", "chr", "pos", "chr2", "pos2", "refCov", "varCov",
       "svtype", "svlen", "CT", sep="\t")
 
 for i, row in merged_df.iterrows():
-    chr_to = row['variants/ALT'].strip("NCTGA[]").split(":")[0] if row['ID'].startswith("BND") else '-'
-    print(row.ID, row.Chrom, row.Start, chr_to, row.End,
+    row.Chrom = row.Chrom.strip('chr')  # omit prepended chr
+
+    if row['SVType'] == "BND":
+        chr_to = row['variants/ALT'].strip("NCTGA[]").split(
+            ":")[0] if row.Chrom == row['variants/CHROM'].strip('chr') else row['variants/CHROM']
+        chr_to = chr_to.strip('chr')  # omit prepended chr
+    else:
+        chr_to = '-'
+
+    print(row.ID, row.Chrom, row.Start, chr_to, row.End, row['calldata/RR'], row['calldata/RV'],
           row.SVType, row.Length, row.CT, sep='\t')
